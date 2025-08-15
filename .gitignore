@@ -1,0 +1,54 @@
+# Node.js
+node_modules/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Dependency directories
+**/node_modules/
+
+# Build output
+dist/
+build/
+
+# Vite
+.vite/
+
+# VS Code
+.vscode/
+
+# Mac system files
+.DS_Store
+
+# Env files
+.env
+.env.*
+
+# Coverage
+coverage/
+
+# Others
+*.local
+
+# Ignore lock files except pnpm
+package-lock.json
+yarn.lock
+
+# Ignore test output
+*.test-results.json
+
+# Ignore IDE files
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Ignore generated files
+*.tgz
+
+# Ignore by OS
+Thumbs.db
