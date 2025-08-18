@@ -1,4 +1,5 @@
 {
+	"type": "module",
 	"scripts": {
 		"embed": "node src/food_embedder.js"
 	},
