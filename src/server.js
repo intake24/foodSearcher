@@ -5,9 +5,9 @@ import { Client } from 'pg';
 const app = express();
 app.use(express.json());
 
-let embedder;
+let extractor;
 (async () => {
-  embedder = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
+  extractor = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
 })();
 
 const client = new Client({
@@ -19,18 +19,21 @@ client.connect();
 
 app.post('/search', async (req, res) => {
   const { query } = req.body;
-  const output = await embedder(query);
-  const embedding = output[0].map((_, i) =>
-    output.reduce((sum, token) => sum + token[i], 0) / output.length
+  const tensor = await extractor(query);
+  const tokenEmbeddings = tensor.tolist()[0];
+  const embedding = Array.from(
+    { length: tokenEmbeddings[0].length },
+    (_, i) =>
+      tokenEmbeddings.reduce((sum, token) => sum + token[i], 0) /
+      tokenEmbeddings.length
   );
-
   // Find top 5 similar foods
   const result = await client.query(
     `SELECT id, name, embedding <=> $1 AS distance
      FROM foods
      ORDER BY embedding <=> $1
      LIMIT 5`,
-    [embedding]
+    [`[${embedding.join(',')}]`]
   );
   res.json(result.rows);
 });

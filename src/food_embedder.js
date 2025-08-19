@@ -13,19 +13,20 @@ const foods = [
 ];
 
 async function main() {
-  const extractor = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
+  const embedder = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
 
   const client = new Client({
     user: 'postgres',
     password: 'postgres',
-    database: 'postgres'
+    database: 'postgres',
+    port: 55432
   });
   await client.connect();
 
-  const output = await extractor(foods);
-  // Write the output to embeddings.json
-  writeFileSync('./data/embeddings.json', JSON.stringify(output.tolist(), null, 2));
-  const embeddings = output.tolist().map(tokenEmbeddings => {
+  const tensors = await embedder(foods);
+  // Write the array of tensors to embeddings.json
+  writeFileSync('./data/embeddings.json', JSON.stringify(tensors.tolist(), null, 2));
+  const embeddings = tensors.tolist().map(tokenEmbeddings => {
     const numTokens = tokenEmbeddings.length;
     const numFeatures = tokenEmbeddings[0].length;
     return Array.from({ length: numFeatures }, (_, i) =>
