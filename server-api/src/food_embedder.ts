@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { pipeline } from '@xenova/transformers';
+import { pipeline } from '@huggingface/transformers';
 import { Client } from 'pg';
 import { writeFileSync } from 'fs';
 
@@ -13,7 +13,8 @@ let foods: string[] = [
 async function main(): Promise<void> {
   const extractor = await pipeline(
     'feature-extraction',
-    'Xenova/all-MiniLM-L6-v2'
+    'Xenova/all-MiniLM-L6-v2',
+    { dtype: 'fp32' }
   );
 
   const client = new Client({
