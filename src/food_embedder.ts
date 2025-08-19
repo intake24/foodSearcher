@@ -3,12 +3,12 @@ import { pipeline } from '@xenova/transformers';
 import { Client } from 'pg';
 import { writeFileSync } from 'fs';
 
-const foods: string[] = [
-  'Lamb and vegetable soup',
-  'Acai berry juice ',
-  'Airwaves chewing gum, sugar free',
-  'Anchovies, in sauce',
-  'Apple cake',
+let foods: string[] = [
+  // 'Lamb and vegetable soup',
+  // 'Acai berry juice ',
+  // 'Airwaves chewing gum, sugar free',
+  // 'Anchovies, in sauce',
+  // 'Apple cake',
 ];
 async function main(): Promise<void> {
   const extractor = await pipeline(
@@ -24,35 +24,38 @@ async function main(): Promise<void> {
   });
   await client.connect();
 
-  const output: any = await extractor(foods);
-  // Write the output to embeddings.json
-  writeFileSync(
-    './data/embeddings.json',
-    JSON.stringify(output.tolist(), null, 2)
-  );
-  // Assuming output.tolist() is [ [ [token1], [token2], ... ] ]
-  const embeddings: number[][] = output
-    .tolist()
-    .map((tokenEmbeddings: number[][]) => {
-      const numTokens = tokenEmbeddings.length;
-      const numFeatures = tokenEmbeddings[0].length;
-      // Average over tokens for each feature
-      return Array.from(
-        { length: numFeatures },
-        (_, i) =>
-          tokenEmbeddings.reduce((sum, token) => sum + token[i], 0) / numTokens
-      );
-    });
-  // Insert embeddings into the database
-  for (const [i, food] of foods.entries()) {
-    await client.query('UPDATE foods SET embedding = $2 WHERE name = $1;', [
-      food,
-      `[${embeddings[i].join(',')}]`,
-    ]);
-    console.log(
-      `name="${food}" and its embeddings inserted into the database.`
-    );
+  // Fetch all food names from the database
+  const res = await client.query('SELECT name FROM foods;');
+  foods = res.rows.map((row) => row.name);
+
+  const BATCH_SIZE = 32;
+  let counter = 0;
+  for (let start = 0; start < foods.length; start += BATCH_SIZE) {
+    const batch = foods.slice(start, start + BATCH_SIZE);
+    const output: any = await extractor(batch);
+    const embeddings: number[][] = output
+      .tolist()
+      .map((tokenEmbeddings: number[][]) => {
+        const numTokens = tokenEmbeddings.length;
+        const numFeatures = tokenEmbeddings[0].length;
+        // Average over tokens for each feature
+        return Array.from(
+          { length: numFeatures },
+          (_, i) =>
+            tokenEmbeddings.reduce((sum, token) => sum + token[i], 0) /
+            numTokens
+        );
+      });
+    for (const [i, food] of batch.entries()) {
+      await client.query('UPDATE foods SET embedding = $2 WHERE name = $1;', [
+        food,
+        `[${embeddings[i].join(',')}]`,
+      ]);
+      counter++;
+    }
+    console.log(`Processed ${counter} / ${foods.length} embeddings...`);
   }
+  console.log(`${counter} embeddings inserted into the database.`);
   await client.end();
 }
 main();

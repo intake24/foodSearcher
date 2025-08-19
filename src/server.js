@@ -1,8 +1,12 @@
 import express from 'express';
+import cors from 'cors';
 import { pipeline } from '@xenova/transformers';
 import { Client } from 'pg';
 
 const app = express();
+app.use(cors({
+  origin: 'http://localhost:5173'
+}));
 app.use(express.json());
 
 let extractor;
@@ -13,7 +17,8 @@ let extractor;
 const client = new Client({
   user: 'postgres',
   password: 'postgres',
-  database: 'postgres'
+  database: 'postgres',
+  port: 55432
 });
 client.connect();
 
@@ -29,7 +34,7 @@ app.post('/search', async (req, res) => {
   );
   // Find top 5 similar foods
   const result = await client.query(
-    `SELECT id, name, embedding <=> $1 AS distance
+    `SELECT code, name, embedding <=> $1 AS distance
      FROM foods
      ORDER BY embedding <=> $1
      LIMIT 5`,
