@@ -1,15 +1,8 @@
 #!/usr/bin/env node
 import { pipeline } from '@huggingface/transformers';
 import { Client } from 'pg';
-import { writeFileSync } from 'fs';
 
-let foods: string[] = [
-  // 'Lamb and vegetable soup',
-  // 'Acai berry juice ',
-  // 'Airwaves chewing gum, sugar free',
-  // 'Anchovies, in sauce',
-  // 'Apple cake',
-];
+let foods: string[] = [];
 async function main(): Promise<void> {
   const extractor = await pipeline(
     'feature-extraction',
@@ -29,8 +22,9 @@ async function main(): Promise<void> {
   const res = await client.query('SELECT name FROM foods;');
   foods = res.rows.map((row) => row.name);
 
-  const BATCH_SIZE = 32;
+  const BATCH_SIZE = 128;
   let counter = 0;
+  // Collect embeddings for export in batches to avoid memory issues
   for (let start = 0; start < foods.length; start += BATCH_SIZE) {
     const batch = foods.slice(start, start + BATCH_SIZE);
     const output: any = await extractor(batch);
@@ -39,7 +33,7 @@ async function main(): Promise<void> {
       .map((tokenEmbeddings: number[][]) => {
         const numTokens = tokenEmbeddings.length;
         const numFeatures = tokenEmbeddings[0].length;
-        // Average over tokens for each feature
+        // Average pooling: Average over tokens for each feature
         return Array.from(
           { length: numFeatures },
           (_, i) =>
