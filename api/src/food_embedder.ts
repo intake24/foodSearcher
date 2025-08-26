@@ -6,7 +6,7 @@ let foods: string[] = [];
 async function main(): Promise<void> {
   const extractor = await pipeline(
     'feature-extraction',
-    'neuralmind/bert-base-portuguese-cased',
+    'Xenova/all-MiniLM-L6-v2',
     { dtype: 'fp32' }
   );
 

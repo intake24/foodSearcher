@@ -1,8 +1,9 @@
 {
+	"name": "foodsearcher-api",
 	"type": "module",
 	"scripts": {
 		"embed": "tsx src/food_embedder.ts",
-		"server": "tsx src/server.js"
+		"api": "tsx src/server.ts"
 	},
 	"dependencies": {
 		"@huggingface/transformers": "^3.7.2",

@@ -1,7 +1,10 @@
 {
   "type": "module",
   "scripts": {
-    "embed": "tsx src/food_embedder.ts"
+    "start": "pnpm api & pnpm app",
+    "db:embed": "pnpm --filter foodsearcher-api embed",
+    "api": "pnpm --filter foodsearcher-api api",
+    "app": "pnpm --filter foodsearcher-client dev"
   },
   "dependencies": {
     "@huggingface/transformers": "^3.7.2",

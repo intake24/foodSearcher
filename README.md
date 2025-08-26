@@ -17,10 +17,11 @@ A full-stack application for searching foods using semantic embeddings and vecto
 ## Project Structure
 
 ```
-client/                # Vue 3 frontend
-server-api/            # Node.js/Express API server, embedding scripts, utilities
+app/                # Vue 3 frontend
+api/            # Node.js/Express API server, embedding scripts, utilities
 compose.yaml           # Docker Compose setup
 init/                  # Initialization scripts for database
+db/                    # Database schema and sample data (via `pg_restore`)
 ```
 
 ## Getting Started
@@ -41,8 +42,6 @@ init/                  # Initialization scripts for database
 2. **Install dependencies:**
    ```sh
    pnpm install
-   cd foodsearcher-client && pnpm install
-   cd ../server-api && pnpm install
    ```
 3. **Start the database and Adminer:**
 
@@ -76,21 +75,45 @@ init/                  # Initialization scripts for database
    ALTER TABLE foods ADD COLUMN embedding vector(384); -- 384 for MiniLM, adjust for your model
    ```
 
+   Or, for merely testing purposes, instead of importing `foods` table from `public.foods` in `Intake24`, you can also use `pg_restore` to import a sample foods dataset
+
+   ```sh
+   pg_restore -h localhost -p 55432 -U postgres -d postgres -v db/dump-postgres.sql
+   ```
+
 4. **Run the embedding script:**
+
    ```sh
-   pnpm run embed
+   pnpm db:embed
    ```
-5. **Start the API server:**
-   ```sh
-   cd server-api
-   pnpm run dev
-   ```
-6. **Start the frontend:**
-   ```sh
-   cd foodsearcher-client
-   pnpm run dev
-   ```
-   App available at http://localhost:5173
+
+   > [!NOTE]
+   > Occassionally, you will need to run this to refresh the embeddings (e.g. new foods added).
+
+5. **Start the web app**
+   You can run both API server and web server in a single line:
+
+```sh
+pnpm start
+```
+
+If you wish to start separately, you can
+
+**_Start the API server:_**
+
+```sh
+pnpm api
+```
+
+API available at http://localhost:3000
+
+**_Start the frontend:_**
+
+```sh
+pnpm app
+```
+
+App available at http://localhost:5173
 
 ## Usage
 
@@ -99,8 +122,8 @@ init/                  # Initialization scripts for database
 
 ## Development
 
-- Edit frontend in `client`
-- Edit embedding scripts and API server in `server-api`
+- Edit frontend in `app`
+- Edit embedding scripts and API server in `api`
 
 ## License
 
