@@ -36,12 +36,12 @@ app.post('/search', async (req: Request, res: Response) => {
       tokenEmbeddings.reduce((sum, token) => sum + token[i], 0) /
       tokenEmbeddings.length
   );
-  // Find top 10 similar foods
+  // Find top 100 similar foods
   const result = await client.query(
     `SELECT code, name, embedding <=> $1 AS distance
      FROM foods
      ORDER BY embedding <=> $1
-     LIMIT 10`,
+     LIMIT 100`,
     [`[${embedding.join(',')}]`]
   );
   res.json(result.rows);

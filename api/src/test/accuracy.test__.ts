@@ -1,6 +1,6 @@
 /**
- * API Health Check Tests using Vitest
- * Tests the basic functionality and health of the Food Search API
+ * API accuracy Tests using Vitest
+ * Tests the accuracy of the Food Search API across reference datasets
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
@@ -117,7 +117,7 @@ describe('API Health Checks', () => {
 
       if (response.status === 200) {
         expect(Array.isArray(data)).toBe(true);
-        expect(data.length).toBeLessThanOrEqual(100);
+        expect(data.length).toBeLessThanOrEqual(10);
 
         if (data.length > 0) {
           // Check structure of first result
