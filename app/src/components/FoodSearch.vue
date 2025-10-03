@@ -1,7 +1,7 @@
 <template>
   <div>
-    <input v-model="query" @keyup.enter="search" placeholder="Type a food..." />
-    <button @click="search">Search</button>
+    <input v-model="query" placeholder="Type a food..." />
+    <div v-if="isLoading" class="loading">Searching...</div>
     <ul>
       <li v-for="food in results" :key="food.id">
         {{ food.name }} (distance: {{ food.distance.toFixed(5) }})
@@ -11,10 +11,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import axios from 'axios'
 
 const query = ref('')
+const isLoading = ref(false)
+let searchTimeout: number | null = null
+
 interface Food {
   id: number
   name: string
@@ -23,14 +26,40 @@ interface Food {
 
 const results = ref<Food[]>([])
 
-async function search() {
-  console.log('Searching for:', query.value)
-  const res = await axios.post('http://localhost:3000/search', {
-    query: query.value,
-  })
-  console.log('Search results:', res.data)
-  results.value = res.data
+async function search(searchQuery: string) {
+  if (!searchQuery.trim()) {
+    results.value = []
+    return
+  }
+
+  isLoading.value = true
+  try {
+    console.log('Searching for:', searchQuery)
+    const res = await axios.post('http://localhost:3000/search', {
+      query: searchQuery,
+    })
+    console.log('Search results:', res.data)
+    results.value = res.data
+  } catch (error) {
+    console.error('Search error:', error)
+    results.value = []
+  } finally {
+    isLoading.value = false
+  }
 }
+
+// Watch for changes in query and debounce the search
+watch(query, (newQuery) => {
+  // Clear existing timeout
+  if (searchTimeout) {
+    clearTimeout(searchTimeout)
+  }
+
+  // Set new timeout for debounced search
+  searchTimeout = setTimeout(() => {
+    search(newQuery)
+  }, 300) // 300ms delay
+})
 </script>
 
 <style scoped>
@@ -94,5 +123,12 @@ li {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.loading {
+  text-align: center;
+  color: #6b7280;
+  font-style: italic;
+  margin: 1rem 0;
 }
 </style>
