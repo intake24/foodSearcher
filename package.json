@@ -1,7 +1,7 @@
 {
   "type": "module",
   "scripts": {
-    "start": "pnpm api & pnpm app",
+    "start": "concurrently -n api,app -c green,blue \"pnpm api\" \"pnpm app\"",
     "db:embed": "pnpm --filter foodsearcher-api embed",
     "api": "pnpm --filter foodsearcher-api api",
     "app": "pnpm --filter foodsearcher-client dev",
@@ -17,6 +17,7 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
     "@types/pg": "^8.15.5",
+    "concurrently": "^9.0.1",
     "rimraf": "^6.0.1",
     "tsx": "^4.20.4"
   }

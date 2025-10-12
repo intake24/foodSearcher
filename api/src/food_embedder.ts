@@ -1,14 +1,22 @@
 #!/usr/bin/env node
 import { pipeline } from '@huggingface/transformers';
 import { Client } from 'pg';
+import path from 'node:path';
+
+// Use shared model and cache settings
+const MODEL_ID = process.env.EMBEDDING_MODEL ?? 'Xenova/all-MiniLM-L6-v2'; // 384-dim default
+const CACHE_DIR =
+  process.env.TRANSFORMERS_CACHE ??
+  path.resolve(process.cwd(), '..', '.cache', 'transformers');
+console.log('Using model:', MODEL_ID);
+console.log('Using cache dir:', CACHE_DIR);
 
 let foods: string[] = [];
 async function main(): Promise<void> {
-  const extractor = await pipeline(
-    'feature-extraction',
-    'Xenova/all-MiniLM-L6-v2',
-    { dtype: 'fp32' }
-  );
+  const extractor = await pipeline('feature-extraction', MODEL_ID, {
+    dtype: 'fp32',
+    cache_dir: CACHE_DIR,
+  });
 
   const client = new Client({
     user: 'postgres',

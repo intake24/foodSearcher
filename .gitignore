@@ -52,3 +52,6 @@ yarn.lock
 
 # Ignore by OS
 Thumbs.db
+
+# Ignore transformer cache
+.cache/
