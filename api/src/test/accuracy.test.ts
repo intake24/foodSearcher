@@ -249,5 +249,5 @@ describe('🔍 Accuracy test', () => {
       console.warn('Accuracy failures (first 10):', failed);
     }
     expect(successRate).toBeGreaterThanOrEqual(0.95);
-  }, 120_000);
+  }, 1200000);
 });

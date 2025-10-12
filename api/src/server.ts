@@ -3,6 +3,7 @@ import cors from 'cors';
 import { pipeline } from '@huggingface/transformers';
 import { Client } from 'pg';
 import path from 'node:path'; // added
+import 'dotenv/config';
 
 const app = express();
 app.use(
@@ -36,6 +37,7 @@ const client = new Client({
 });
 client.connect();
 
+let counter = 0;
 app.post('/search', async (req: Request, res: Response) => {
   const { query } = req.body as { query: string };
   const tensor = await extractor(query);
@@ -55,6 +57,8 @@ app.post('/search', async (req: Request, res: Response) => {
     [`[${embedding.join(',')}]`]
   );
   res.json(result.rows);
+  counter++;
+  if (counter % 10 === 0) console.log(`Handled ${counter} requests so far.`);
 });
 
 app.listen(3000, () => console.log('Server running on http://localhost:3000'));

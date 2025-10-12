@@ -2,6 +2,7 @@
 import { pipeline } from '@huggingface/transformers';
 import { Client } from 'pg';
 import path from 'node:path';
+import 'dotenv/config';
 
 // Use shared model and cache settings
 const MODEL_ID = process.env.EMBEDDING_MODEL ?? 'Xenova/all-MiniLM-L6-v2'; // 384-dim default
