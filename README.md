@@ -120,6 +120,62 @@ App available at http://localhost:5173
 - Search for foods using the web UI.
 - The backend will return the most similar foods using vector search.
 
+## Testing (API) 🧪
+
+The API package uses Vitest for unit, health, and evaluation tests.
+
+Prerequisites:
+
+- API server running at http://localhost:3000
+- PostgreSQL available and `foods` table embedded
+
+Start the API in a separate terminal:
+
+```sh
+pnpm --filter foodsearcher-api api
+```
+
+Install deps (once):
+
+```sh
+pnpm --filter foodsearcher-api install
+```
+
+Run all tests (non-watch):
+
+```sh
+pnpm --filter foodsearcher-api test:run
+```
+
+Run in watch mode:
+
+```sh
+pnpm --filter foodsearcher-api test:watch
+```
+
+Run the MRR evaluation only:
+
+```sh
+# By file
+pnpm --filter foodsearcher-api test:run -- src/test/mrr.test.ts
+
+# Or by test name pattern
+pnpm --filter foodsearcher-api test:run -t "Mean Reciprocal Rank"
+```
+
+What MRR test does:
+
+- Loads `api/src/test/data/search-terms-vs-food.json`.
+- Samples up to 5,000 unique non-empty queries.
+- Calls `POST /search` and computes Mean Reciprocal Rank at cutoffs:
+  - MRR@1, MRR@10, MRR@50 (logged in the output)
+- Retries requests when the model is still loading (HTTP 503).
+
+Tips:
+
+- If you see 503s for a while, wait until the server logs show the model is ready, then re-run.
+- To speed up, reduce the sample size inside `api/src/test/mrr.test.ts` or lower concurrency.
+
 ## Development
 
 - Edit frontend in `app`
