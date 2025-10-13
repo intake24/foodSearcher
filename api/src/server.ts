@@ -20,6 +20,8 @@ const CACHE_DIR =
   path.resolve(process.cwd(), '..', '.cache', 'transformers');
 console.log('Using model:', MODEL_ID);
 console.log('Using cache dir:', CACHE_DIR);
+const EMBEDDING_COLUMN = `embedded_${MODEL_ID.replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase()}`;
+console.log('Using embedding column:', EMBEDDING_COLUMN);
 
 let extractor: any;
 (async () => {
@@ -50,9 +52,9 @@ app.post('/search', async (req: Request, res: Response) => {
   );
   // Find top 100 similar foods
   const result = await client.query(
-    `SELECT code, name, embedding <=> $1 AS distance
+    `SELECT code, name, ${EMBEDDING_COLUMN} <=> $1 AS distance
      FROM foods
-     ORDER BY embedding <=> $1
+     ORDER BY ${EMBEDDING_COLUMN} <=> $1
      LIMIT 100`,
     [`[${embedding.join(',')}]`]
   );

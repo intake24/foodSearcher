@@ -66,13 +66,27 @@ db/                    # Database schema and sample data (via `pg_restore`)
    docker compose down -v
    ```
 
-   After imported `foods` table from `public.foods` in `Intake24`, add vectors to it by
+   After importing the `foods` table from `public.foods` in `Intake24`, enable pgvector and create a model-specific vector column.
+
+   The embedder and API derive the embedding column name from EMBEDDING_MODEL as:
+   - embedded\_<sanitized MODEL_ID>
+   - Sanitization: lowercase; replace any character outside `[A-Za-z0-9_]` with `_`
+
+   Examples:
+   - Xenova/all-MiniLM-L6-v2 → embedded_xenova_all_minilm_l6_v2 (dim 384)
+   - onnx-community/embeddinggemma-300m-ONNX → embedded_onnx_community_embeddinggemma_300m_onnx
+
+   Create the extension and the appropriate column (dimension must match your model):
 
    ```sql
-   CREATE EXTENSION IF NOT EXISTS vector; // Enable pgvector
+   -- Enable pgvector (once per database)
+   CREATE EXTENSION IF NOT EXISTS vector;
 
+   -- Ensure code uniqueness (optional)
    ALTER TABLE foods ADD CONSTRAINT unique_code UNIQUE (code);
-   ALTER TABLE foods ADD COLUMN embedding vector(384); -- 384 for MiniLM, adjust for your model
+
+   -- Example for MiniLM (384-dim)
+   ALTER TABLE foods ADD COLUMN embedded_xenova_all_minilm_l6_v2 vector(384);
    ```
 
    Or, for merely testing purposes, instead of importing `foods` table from `public.foods` in `Intake24`, you can also use `pg_restore` to import a sample foods dataset
@@ -175,6 +189,45 @@ Tips:
 
 - If you see 503s for a while, wait until the server logs show the model is ready, then re-run.
 - To speed up, reduce the sample size inside `api/src/test/mrr.test.ts` or lower concurrency.
+
+## Model & Embedding Configuration ⚙️
+
+Environment variables (set in `api/.env` or your shell):
+
+- `EMBEDDING_MODEL` — Hugging Face model id used for feature extraction.
+  - Default: `Xenova/all-MiniLM-L6-v2` (384-dim embeddings)
+  - Use a feature-extraction/bi-encoder model (e.g., `Xenova/all-MiniLM-L6-v2`, `Xenova/bge-small-en-v1.5`, `Xenova/bge-m3`).
+  - Avoid rerankers/cross-encoders (e.g., `bge-reranker-*`) — they don’t produce per-text embeddings.
+- `TRANSFORMERS_CACHE` — directory for model cache (default: `<repo>/.cache/transformers`).
+
+Derived embedding column
+
+- The embedder writes to, and the API reads from, a model-specific column named:
+  - `embedded_<sanitized MODEL_ID>`
+  - Sanitization: lowercase and replace any character outside `[A-Za-z0-9_]` with `_`.
+
+Examples:
+
+- `Xenova/all-MiniLM-L6-v2` → `embedded_xenova_all_minilm_l6_v2` (vector(384))
+- `onnx-community/embeddinggemma-300m-ONNX` → `embedded_onnx_community_embeddinggemma_300m_onnx`
+
+Schema preparation (pick the right dimension for your model):
+
+```sql
+-- Enable pgvector (once per database)
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- Ensure code uniqueness (optional)
+ALTER TABLE foods ADD CONSTRAINT unique_code UNIQUE (code);
+
+-- Example for MiniLM (384-dim)
+ALTER TABLE foods ADD COLUMN embedded_xenova_all_minilm_l6_v2 vector(384);
+```
+
+Notes:
+
+- If you switch models, add a new column for the new dimension; the server will automatically query the column derived from `EMBEDDING_MODEL`.
+- Ensure the vector dimension matches the selected model; mismatches will cause database errors.
 
 ## Development
 

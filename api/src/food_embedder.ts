@@ -11,6 +11,9 @@ const CACHE_DIR =
   path.resolve(process.cwd(), '..', '.cache', 'transformers');
 console.log('Using model:', MODEL_ID);
 console.log('Using cache dir:', CACHE_DIR);
+// Derive a safe SQL column name based on model id, e.g., embedded_onnx_community_embeddinggemma_300m_onnx
+const EMBEDDING_COLUMN = `embedded_${MODEL_ID.replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase()}`;
+console.log('Using embedding column:', EMBEDDING_COLUMN);
 
 let foods: string[] = [];
 async function main(): Promise<void> {
@@ -51,10 +54,10 @@ async function main(): Promise<void> {
         );
       });
     for (const [i, food] of batch.entries()) {
-      await client.query('UPDATE foods SET embedding = $2 WHERE name = $1;', [
-        food,
-        `[${embeddings[i].join(',')}]`,
-      ]);
+      await client.query(
+        `UPDATE foods SET ${EMBEDDING_COLUMN} = $2 WHERE name = $1;`,
+        [food, `[${embeddings[i].join(',')}]`]
+      );
       counter++;
     }
     console.log(`Processed ${counter} / ${foods.length} embeddings...`);
