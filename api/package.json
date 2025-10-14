@@ -3,6 +3,7 @@
 	"type": "module",
 	"scripts": {
 		"embed": "tsx src/food_embedder.ts",
+		"embed:gemini": "tsx src/google_food_embedder.ts",
 		"api": "tsx src/server.ts",
 		"test": "vitest",
 		"test:run": "vitest run",
@@ -11,6 +12,7 @@
 	},
 	"dependencies": {
 		"@huggingface/transformers": "^3.7.2",
+		"@google/genai": "^1.24.0",
 		"cors": "^2.8.5",
 		"dotenv": "^17.2.3",
 		"express": "^5.1.0",

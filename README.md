@@ -229,6 +229,67 @@ Notes:
 - If you switch models, add a new column for the new dimension; the server will automatically query the column derived from `EMBEDDING_MODEL`.
 - Ensure the vector dimension matches the selected model; mismatches will cause database errors.
 
+### Gemini Embeddings (Alternative Backend) 🌐
+
+You can generate embeddings using Google's Gemini Embedding model instead of (or in addition to) Hugging Face models.
+
+Environment variables (set in `api/.env` or your shell):
+
+- `GEMINI_API_KEY` — API key from https://aistudio.google.com/apikey (required)
+- `EMBEDDING_MODEL` — Gemini embedding model id (default: `gemini-embedding-001`)
+
+Column naming works the same way: the script writes to `embedded_<sanitized MODEL_ID>`.
+
+For `gemini-embedding-001` (default 3072-dim), the derived column is:
+
+```sql
+ALTER TABLE foods ADD COLUMN embedded_gemini_embedding_001 vector(3072);
+```
+
+However, Gemini supports adjustable output dimensionality (Matryoshka embeddings). To save space you can lower it (recommended options: 768, 1536, or keep 3072). To do this, edit `api/src/google_food_embedder.ts` to pass an `output_dimensionality` in the embed request if you customize (or adapt the script). Then create a column with that dimension instead, e.g.:
+
+```sql
+-- If using output_dimensionality=768
+ALTER TABLE foods ADD COLUMN embedded_gemini_embedding_001 vector(768);
+```
+
+Run the Gemini embedding script:
+
+```sh
+pnpm --filter foodsearcher-api embed:gemini
+```
+
+or simply:
+
+```sh
+pnpm db:embed:gemini
+```
+
+What it does:
+
+- Detects the embedding dimension automatically (from a probe) before bulk updates.
+- Ensures the column exists (adds it if missing with the detected dimension).
+- Batches foods and updates the Postgres vector column.
+
+Verification steps:
+
+1. After running, check a few rows:
+   ```sql
+   SELECT name, embedded_gemini_embedding_001[1:5] FROM foods WHERE embedded_gemini_embedding_001 IS NOT NULL LIMIT 3;
+   ```
+2. Run the API server with `EMBEDDING_MODEL=gemini-embedding-001` and execute a search.
+3. Optionally run the MRR test to compare performance versus a Hugging Face model.
+
+Switching between backends:
+
+- To query Gemini embeddings set `EMBEDDING_MODEL=gemini-embedding-001` before starting the API.
+- To revert to HF models set `EMBEDDING_MODEL` to the Hugging Face id and ensure that column is populated.
+
+Tips:
+
+- If using a reduced dimension (e.g. 768) consider normalizing vectors before similarity comparisons if the model does not return normalized embeddings (Gemini's full 3072-dim output is already normalized; reduced sizes may need normalization if you later compute cosine similarity outside pgvector).
+- Keep separate columns for each model you evaluate; do not overwrite existing vectors from other models.
+
 ## Development
 
 - Edit frontend in `app`

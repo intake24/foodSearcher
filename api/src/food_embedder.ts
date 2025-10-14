@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { pipeline } from '@huggingface/transformers';
 import { Client } from 'pg';
+import { ensureEmbeddingColumn } from './utils/db';
 import path from 'node:path';
 import 'dotenv/config';
 
@@ -14,6 +15,7 @@ console.log('Using cache dir:', CACHE_DIR);
 // Derive a safe SQL column name based on model id, e.g., embedded_onnx_community_embeddinggemma_300m_onnx
 const EMBEDDING_COLUMN = `embedded_${MODEL_ID.replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase()}`;
 console.log('Using embedding column:', EMBEDDING_COLUMN);
+
 
 let foods: string[] = [];
 async function main(): Promise<void> {
@@ -33,6 +35,22 @@ async function main(): Promise<void> {
   // Fetch all food names from the database
   const res = await client.query('SELECT name FROM foods;');
   foods = res.rows.map((row) => row.name);
+
+  if (foods.length === 0) {
+    console.log('No foods found. Exiting.');
+    await client.end();
+    return;
+  }
+
+  // Probe dimension using first item to ensure column exists & matches
+  const probeOut: any = await extractor([foods[0]]);
+  const probeTokens: number[][] = probeOut.tolist()[0];
+  const dim = probeTokens[0].length; // features per token
+  if (!Number.isFinite(dim) || dim < 1) {
+    throw new Error(`Embedding dimension invalid: ${dim}`);
+  }
+  console.log(`Detected embedding dimension: ${dim}`);
+  await ensureEmbeddingColumn(client, 'foods', EMBEDDING_COLUMN, dim);
 
   const BATCH_SIZE = 128;
   let counter = 0;
