@@ -35,19 +35,20 @@ async function getEmbeddings(texts: string[]): Promise<number[][]> {
   return embeddings;
 }
 
-
 async function main() {
   const client = new Client({
     user: 'postgres',
     password: 'postgres',
-    database: 'postgres',
-    port: 55432,
+    database: 'intake24_foods',
+    port: 5432,
   });
   await client.connect();
 
   // Load all foods
   const res = await client.query('SELECT name FROM foods;');
-  const foods: string[] = res.rows.map((r) => r.name);
+  const foods: string[] = res.rows
+    .map((r) => String(r.name ?? '').trim())
+    .filter((n) => n.length > 0);
   if (foods.length === 0) {
     console.log('No foods found.');
     await client.end();
@@ -68,7 +69,7 @@ async function main() {
 
   await ensureEmbeddingColumn(client, 'foods', EMBEDDING_COLUMN, dim);
 
-  const BATCH_SIZE = 64;
+  const BATCH_SIZE = 100;
   let counter = 0;
 
   for (let i = 0; i < foods.length; i += BATCH_SIZE) {

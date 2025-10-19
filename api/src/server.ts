@@ -35,8 +35,8 @@ console.log('Using embedding column:', EMBEDDING_COLUMN);
 const client = new Client({
   user: 'postgres',
   password: 'postgres',
-  database: 'postgres',
-  port: 55432,
+  database: 'intake24_foods',
+  port: 5432,
 });
 client.connect();
 
@@ -118,8 +118,9 @@ app.post('/search', async (req: Request, res: Response) => {
   }
   // Find top 100 similar foods
   const result = await client.query(
-    `SELECT code, name, ${EMBEDDING_COLUMN} <=> $1 AS distance
+    `SELECT id, code, name, ${EMBEDDING_COLUMN} <=> $1 AS distance
      FROM foods
+     WHERE "locale_id" = 'UK_V2_2022'
      ORDER BY ${EMBEDDING_COLUMN} <=> $1
      LIMIT 100`,
     [`[${embedding.join(',')}]`]

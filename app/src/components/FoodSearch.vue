@@ -4,7 +4,8 @@
     <div v-if="isLoading" class="loading">Searching...</div>
     <ul>
       <li v-for="food in results" :key="food.id">
-        {{ food.name }} (distance: {{ food.distance.toFixed(5) }})
+        {{ food.name }} - id: {{ food.id }} - code: {{ food.code }} - distance(distance:
+        {{ food.distance.toFixed(5) }})
       </li>
     </ul>
   </div>

@@ -16,7 +16,6 @@ console.log('Using cache dir:', CACHE_DIR);
 const EMBEDDING_COLUMN = `embedded_${MODEL_ID.replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase()}`;
 console.log('Using embedding column:', EMBEDDING_COLUMN);
 
-
 let foods: string[] = [];
 async function main(): Promise<void> {
   const extractor = await pipeline('feature-extraction', MODEL_ID, {
@@ -27,8 +26,8 @@ async function main(): Promise<void> {
   const client = new Client({
     user: 'postgres',
     password: 'postgres',
-    database: 'postgres',
-    port: 55432,
+    database: 'intake24_foods',
+    port: 5432,
   });
   await client.connect();
 
