@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import 'dotenv/config';
-import { Client } from 'pg';
-import { ensureEmbeddingColumn } from './utils/db';
+import { ensureEmbeddingColumn, connectNewClient } from './utils/db';
 import { GoogleGenAI } from '@google/genai';
 
 // Config
@@ -36,13 +35,7 @@ async function getEmbeddings(texts: string[]): Promise<number[][]> {
 }
 
 async function main() {
-  const client = new Client({
-    user: 'postgres',
-    password: 'postgres',
-    database: 'intake24_foods',
-    port: 5432,
-  });
-  await client.connect();
+  const client = await connectNewClient();
 
   // Load all foods
   const res = await client.query('SELECT name FROM foods;');

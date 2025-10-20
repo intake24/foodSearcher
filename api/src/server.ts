@@ -2,8 +2,7 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import { pipeline } from '@huggingface/transformers';
 import { GoogleGenAI } from '@google/genai';
-import { Client } from 'pg';
-import { ensureEmbeddingColumn } from './utils/db';
+import { ensureEmbeddingColumn, getClient } from './utils/db';
 import path from 'node:path'; // added
 import 'dotenv/config';
 
@@ -15,119 +14,125 @@ app.use(
 );
 app.use(express.json());
 
-// Use shared model and cache settings
-const MODEL_ID = process.env.EMBEDDING_MODEL ?? 'Xenova/all-MiniLM-L6-v2'; // default HF model
-const IS_GEMINI = MODEL_ID.toLowerCase().startsWith('gemini');
+// Default model (used if client doesn't specify) and cache settings
+const DEFAULT_MODEL_ID =
+  process.env.EMBEDDING_MODEL ?? 'Xenova/all-MiniLM-L6-v2';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const CACHE_DIR =
   process.env.TRANSFORMERS_CACHE ??
   path.resolve(process.cwd(), '..', '.cache', 'transformers');
-console.log(
-  'Using model:',
-  MODEL_ID,
-  IS_GEMINI ? '(Gemini backend)' : '(HF transformers backend)'
-);
+console.log('Default model:', DEFAULT_MODEL_ID);
 console.log('Using cache dir:', CACHE_DIR);
-const EMBEDDING_COLUMN = `embedded_${MODEL_ID.replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase()}`;
-console.log('Using embedding column:', EMBEDDING_COLUMN);
+function toEmbeddingColumn(modelId: string) {
+  return `embedded_${modelId.replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase()}`;
+}
+console.log('Default embedding column:', toEmbeddingColumn(DEFAULT_MODEL_ID));
 
-// DB client (must be available before probe)
-const client = new Client({
-  user: 'postgres',
-  password: 'postgres',
-  database: 'intake24_foods',
-  port: 5432,
-});
-client.connect();
+// Shared DB client
+const clientPromise = getClient();
 
-let extractor: any; // For HF pipeline
-let genAI: GoogleGenAI | null = null; // For Gemini
-let ready = false;
-(async () => {
-  try {
-    let dim: number;
-    if (IS_GEMINI) {
-      if (!GEMINI_API_KEY) {
+// Caches and backend selector
+const HFExtractors = new Map<string, any>(); // modelId -> extractor
+const modelDims = new Map<string, number>(); // modelId -> dim
+let genAI: GoogleGenAI | null = null;
+
+async function ensureModelReadyFor(
+  modelId: string
+): Promise<{ backend: 'gemini' | 'hf'; dim: number; column: string }> {
+  const isGemini = modelId.toLowerCase().startsWith('gemini');
+  let dim = modelDims.get(modelId);
+  const column = toEmbeddingColumn(modelId);
+  const client = await clientPromise;
+
+  if (isGemini) {
+    if (!genAI) {
+      if (!GEMINI_API_KEY)
         throw new Error('GEMINI_API_KEY is required for Gemini models.');
-      }
       genAI = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
-      // Probe embedding dimension using Gemini embedContent
+    }
+    if (!dim) {
       const probeResp: any = await genAI.models.embedContent({
-        model: MODEL_ID,
+        model: modelId,
         contents: ['probe'],
       } as any);
-      const embArray: number[] = probeResp.embeddings?.[0]?.values ?? [];
-      dim = embArray.length;
+      const values: number[] = probeResp.embeddings?.[0]?.values ?? [];
+      dim = values.length;
       if (!Number.isFinite(dim) || dim < 1)
         throw new Error(`Gemini probe dimension invalid: ${dim}`);
-      console.log(`Gemini probe detected embedding dimension: ${dim}`);
-    } else {
-      extractor = await pipeline('feature-extraction', MODEL_ID, {
+      modelDims.set(modelId, dim);
+      console.log(`[Gemini] ${modelId} dimension: ${dim}`);
+    }
+    // await ensureEmbeddingColumn(client, 'foods', column, dim);
+    return { backend: 'gemini', dim, column };
+  } else {
+    let extractor = HFExtractors.get(modelId);
+    if (!extractor) {
+      extractor = await pipeline('feature-extraction', modelId, {
         dtype: 'fp32',
         cache_dir: CACHE_DIR,
       });
+      HFExtractors.set(modelId, extractor);
+    }
+    if (!dim) {
       const probeTensor: any = await extractor(['probe']);
       const tokenEmbeddings: number[][] = probeTensor.tolist()[0];
       dim = tokenEmbeddings[0].length;
       if (!Number.isFinite(dim) || dim < 1)
         throw new Error(`HF probe dimension invalid: ${dim}`);
-      console.log(`HF probe detected embedding dimension: ${dim}`);
+      modelDims.set(modelId, dim);
+      console.log(`[HF] ${modelId} dimension: ${dim}`);
     }
-    await ensureEmbeddingColumn(client, 'foods', EMBEDDING_COLUMN, dim);
-    ready = true;
-    console.log('Embedding column ready. Server can accept search requests.');
-  } catch (e) {
-    console.error('Failed to initialize embeddings backend:', e);
+    // await ensureEmbeddingColumn(client, 'foods', column, dim);
+    return { backend: 'hf', dim, column };
   }
-})();
+}
 
 let counter = 0;
 app.post('/search', async (req: Request, res: Response) => {
-  if (!ready) {
-    return res
-      .status(503)
-      .json({ error: 'Model/loading not ready. Retry shortly.' });
-  }
-  const { query } = req.body as { query: string };
-  let embedding: number[];
-  if (IS_GEMINI) {
-    try {
+  const { query, model } = req.body as { query: string; model?: string };
+  if (!query || !query.trim()) return res.json([]);
+  const modelId = (model ?? DEFAULT_MODEL_ID).trim();
+  try {
+    const { backend, column } = await ensureModelReadyFor(modelId);
+    let embedding: number[];
+    if (backend === 'gemini') {
       const resp: any = await genAI!.models.embedContent({
-        model: MODEL_ID,
+        model: modelId,
         contents: [query],
       } as any);
       embedding = resp.embeddings?.[0]?.values ?? [];
-      if (!embedding.length) {
+      if (!embedding.length)
         return res.status(500).json({ error: 'Empty embedding from Gemini.' });
-      }
-    } catch (e: any) {
-      console.error('Gemini embed error:', e);
-      return res
-        .status(500)
-        .json({ error: 'Gemini embedding failure', details: e?.message });
+    } else {
+      const extractor = HFExtractors.get(modelId)!;
+      const tensor = await extractor(query);
+      const tokenEmbeddings: number[][] = tensor.tolist()[0];
+      embedding = Array.from(
+        { length: tokenEmbeddings[0].length },
+        (_, i) =>
+          tokenEmbeddings.reduce((sum, token) => sum + token[i], 0) /
+          tokenEmbeddings.length
+      );
     }
-  } else {
-    const tensor = await extractor(query);
-    const tokenEmbeddings: number[][] = tensor.tolist()[0];
-    embedding = Array.from(
-      { length: tokenEmbeddings[0].length },
-      (_, i) =>
-        tokenEmbeddings.reduce((sum, token) => sum + token[i], 0) /
-        tokenEmbeddings.length
+    const client = await clientPromise;
+    const result = await client.query(
+      `SELECT id, code, name, ${column} <=> $1 AS distance
+       FROM foods
+       WHERE "locale_id" = 'UK_V2_2022' AND ${column} IS NOT NULL
+       ORDER BY ${column} <=> $1
+       LIMIT 100`,
+      [`[${embedding.join(',')}]`]
     );
+    res.json(result.rows);
+    counter++;
+    if (counter % 10 === 0) console.log(`Handled ${counter} requests so far.`);
+  } catch (e: any) {
+    console.error('Search error:', e);
+    const message = e?.message ?? 'Unknown error';
+    if (/GEMINI_API_KEY/.test(message))
+      return res.status(400).json({ error: message });
+    return res.status(500).json({ error: message });
   }
-  // Find top 100 similar foods
-  const result = await client.query(
-    `SELECT id, code, name, ${EMBEDDING_COLUMN} <=> $1 AS distance
-     FROM foods
-     WHERE "locale_id" = 'UK_V2_2022'
-     ORDER BY ${EMBEDDING_COLUMN} <=> $1
-     LIMIT 100`,
-    [`[${embedding.join(',')}]`]
-  );
-  res.json(result.rows);
-  counter++;
-  if (counter % 10 === 0) console.log(`Handled ${counter} requests so far.`);
 });
 
 app.listen(3000, () => console.log('Server running on http://localhost:3000'));

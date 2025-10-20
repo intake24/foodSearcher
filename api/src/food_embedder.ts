@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import { pipeline } from '@huggingface/transformers';
-import { Client } from 'pg';
-import { ensureEmbeddingColumn } from './utils/db';
+import { ensureEmbeddingColumn, connectNewClient } from './utils/db';
 import path from 'node:path';
 import 'dotenv/config';
 
@@ -23,17 +22,18 @@ async function main(): Promise<void> {
     cache_dir: CACHE_DIR,
   });
 
-  const client = new Client({
-    user: 'postgres',
-    password: 'postgres',
-    database: 'intake24_foods',
-    port: 5432,
-  });
-  await client.connect();
+  const client = await connectNewClient();
 
-  // Fetch all food names from the database
+  // Load all foods
   const res = await client.query('SELECT name FROM foods;');
-  foods = res.rows.map((row) => row.name);
+  const foods: string[] = res.rows
+    .map((r) => String(r.name ?? '').trim())
+    .filter((n) => n.length > 0);
+  if (foods.length === 0) {
+    console.log('No foods found.');
+    await client.end();
+    return;
+  }
 
   if (foods.length === 0) {
     console.log('No foods found. Exiting.');

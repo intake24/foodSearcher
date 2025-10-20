@@ -1,4 +1,57 @@
 import { Client } from 'pg'
+import 'dotenv/config'
+
+export type DbConfig = {
+  host: string
+  port: number
+  user: string
+  password?: string
+  database: string
+}
+
+export function getDbConfigFromEnv(): DbConfig {
+  return {
+    host: process.env.PGHOST || 'localhost',
+    port: Number(process.env.PGPORT) || 5432,
+    user: process.env.PGUSER || 'postgres',
+    password: process.env.PGPASSWORD || 'postgres',
+    database: process.env.PGDATABASE || 'intake24_foods',
+  }
+}
+
+export function createClient(cfg?: Partial<DbConfig>): Client {
+  const base = getDbConfigFromEnv()
+  const merged: DbConfig = { ...base, ...(cfg || {}) } as DbConfig
+  return new Client({
+    host: merged.host,
+    port: merged.port,
+    user: merged.user,
+    password: merged.password,
+    database: merged.database,
+  })
+}
+
+let sharedClient: Client | null = null
+
+export async function getClient(): Promise<Client> {
+  if (sharedClient) return sharedClient
+  sharedClient = createClient()
+  await sharedClient.connect()
+  return sharedClient
+}
+
+export async function connectNewClient(cfg?: Partial<DbConfig>): Promise<Client> {
+  const client = createClient(cfg)
+  await client.connect()
+  return client
+}
+
+export async function closeSharedClient(): Promise<void> {
+  if (sharedClient) {
+    await sharedClient.end().catch(() => {})
+    sharedClient = null
+  }
+}
 
 export async function ensureEmbeddingColumn(client: Client, table: string, column: string, dim: number) {
   const checkRes = await client.query(

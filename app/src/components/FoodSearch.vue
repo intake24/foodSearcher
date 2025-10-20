@@ -1,10 +1,19 @@
 <template>
   <div>
-    <input v-model="query" placeholder="Type a food..." />
+    <div
+      style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 12px"
+    >
+      <input v-model="query" placeholder="Type a food..." />
+      <select v-model="selectedModel">
+        <option v-for="m in models" :key="m.value" :value="m.value">
+          {{ m.label }}
+        </option>
+      </select>
+    </div>
     <div v-if="isLoading" class="loading">Searching...</div>
     <ul>
       <li v-for="food in results" :key="food.id">
-        {{ food.name }} - id: {{ food.id }} - code: {{ food.code }} - distance(distance:
+        {{ food.name }} - {{ food.id }} - {{ food.code }} - (distance:
         {{ food.distance.toFixed(5) }})
       </li>
     </ul>
@@ -21,11 +30,23 @@ let searchTimeout: number | null = null
 
 interface Food {
   id: number
+  code: string | number
   name: string
   distance: number
 }
 
 const results = ref<Food[]>([])
+
+// Model selection
+const models = [
+  { label: 'HF: MiniLM-L6-v2 (384d)', value: 'Xenova/all-MiniLM-L6-v2' },
+  {
+    label: 'HF: mixbreadai/mxbai-embed-large-v1 (1024d)',
+    value: 'mixedbread-ai/mxbai-embed-large-v1',
+  },
+  { label: 'Gemini: gemini-embedding-001 (3072d)', value: 'gemini-embedding-001' },
+]
+const selectedModel = ref<string>(models[0].value)
 
 async function search(searchQuery: string) {
   if (!searchQuery.trim()) {
@@ -38,6 +59,7 @@ async function search(searchQuery: string) {
     console.log('Searching for:', searchQuery)
     const res = await axios.post('http://localhost:3000/search', {
       query: searchQuery,
+      model: selectedModel.value,
     })
     console.log('Search results:', res.data)
     results.value = res.data
@@ -50,7 +72,7 @@ async function search(searchQuery: string) {
 }
 
 // Watch for changes in query and debounce the search
-watch(query, (newQuery) => {
+function debouncedSearch() {
   // Clear existing timeout
   if (searchTimeout) {
     clearTimeout(searchTimeout)
@@ -58,9 +80,12 @@ watch(query, (newQuery) => {
 
   // Set new timeout for debounced search
   searchTimeout = setTimeout(() => {
-    search(newQuery)
+    search(query.value)
   }, 300) // 300ms delay
-})
+}
+
+watch(query, () => debouncedSearch())
+watch(selectedModel, () => debouncedSearch())
 </script>
 
 <style scoped>
@@ -106,6 +131,13 @@ button {
 }
 button:hover {
   background: #1d4ed8;
+}
+
+select {
+  padding: 0.6rem 0.8rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.5rem;
+  background: #fff;
 }
 
 ul {
