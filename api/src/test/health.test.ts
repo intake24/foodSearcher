@@ -4,8 +4,9 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import 'dotenv/config';
 
-const API_BASE_URL = 'http://localhost:3000';
+const API_BASE_URL = process.env.API_HOST + ':' + process.env.API_PORT;
 const API_TIMEOUT = 30000; // 30 seconds for API to be ready
 
 // Helper function to wait for API to be ready
@@ -139,7 +140,7 @@ describe('API Health Checks', () => {
         body: JSON.stringify({ query: '' }),
       });
 
-      expect([200, 503]).toContain(response.status);
+      expect([200, 400, 503]).toContain(response.status);
     });
 
     it('should handle special characters', async () => {

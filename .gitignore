@@ -55,3 +55,6 @@ Thumbs.db
 
 # Ignore transformer cache
 .cache/
+
+# un-ignore .env template
+!.env-template

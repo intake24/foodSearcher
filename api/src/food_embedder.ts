@@ -8,7 +8,7 @@ import 'dotenv/config';
 const MODEL_ID = process.env.EMBEDDING_MODEL ?? 'Xenova/all-MiniLM-L6-v2'; // 384-dim default
 const CACHE_DIR =
   process.env.TRANSFORMERS_CACHE ??
-  path.resolve(process.cwd(), '..', '.cache', 'transformers');
+  path.resolve(process.cwd(), '.cache', 'transformers');
 console.log('Using model:', MODEL_ID);
 console.log('Using cache dir:', CACHE_DIR);
 // Derive a safe SQL column name based on model id, e.g., embedded_onnx_community_embeddinggemma_300m_onnx

@@ -2,25 +2,25 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import { pipeline } from '@huggingface/transformers';
 import { GoogleGenAI } from '@google/genai';
-import { ensureEmbeddingColumn, getClient } from './utils/db';
+import { getClient } from './utils/db';
 import path from 'node:path'; // added
 import 'dotenv/config';
 
 const app = express();
 app.use(
   cors({
-    origin: 'http://localhost:5173',
+    origin: process.env.CORS_ORIGIN,
   })
 );
 app.use(express.json());
 
-// Default model (used if client doesn't specify) and cache settings
+// Default model and cache settings
 const DEFAULT_MODEL_ID =
   process.env.EMBEDDING_MODEL ?? 'Xenova/all-MiniLM-L6-v2';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const CACHE_DIR =
   process.env.TRANSFORMERS_CACHE ??
-  path.resolve(process.cwd(), '..', '.cache', 'transformers');
+  path.resolve(process.cwd(), '.cache', 'transformers');
 console.log('Default model:', DEFAULT_MODEL_ID);
 console.log('Using cache dir:', CACHE_DIR);
 function toEmbeddingColumn(modelId: string) {
@@ -90,7 +90,7 @@ async function ensureModelReadyFor(
 let counter = 0;
 app.post('/search', async (req: Request, res: Response) => {
   const { query, model } = req.body as { query: string; model?: string };
-  if (!query || !query.trim()) return res.json([]);
+  if (!query || !query.trim()) return res.status(400).json([]);
   const modelId = (model ?? DEFAULT_MODEL_ID).trim();
   try {
     const { backend, column } = await ensureModelReadyFor(modelId);
@@ -135,4 +135,8 @@ app.post('/search', async (req: Request, res: Response) => {
   }
 });
 
-app.listen(3000, () => console.log('Server running on http://localhost:3000'));
+app.listen(process.env.API_PORT, () =>
+  console.log(
+    `Server running on ${process.env.API_HOST}:${process.env.API_PORT}`
+  )
+);
