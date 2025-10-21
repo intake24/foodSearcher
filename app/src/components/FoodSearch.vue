@@ -1,15 +1,23 @@
 <template>
   <div>
-    <div
-      style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 12px"
-    >
-      <input v-model="query" placeholder="Type a food..." />
-      <select v-model="selectedModel">
-        <option v-for="m in models" :key="m.value" :value="m.value">
-          {{ m.label }}
-        </option>
-      </select>
+    <div class="control-bar">
+      <input
+        v-model="query"
+        placeholder="Type a food..."
+        class="control"
+        type="search"
+        aria-label="Search food"
+      />
+      <div>
+        <label class="control-label" for="modelSelect">Model</label>
+        <select v-model="selectedModel" id="modelSelect" class="control">
+          <option v-for="m in models" :key="m.value" :value="m.value">
+            {{ m.label }}
+          </option>
+        </select>
+      </div>
     </div>
+    <div></div>
     <div v-if="isLoading" class="loading">Searching...</div>
     <ul>
       <li v-for="food in results" :key="food.id">
@@ -26,7 +34,7 @@ import axios from 'axios'
 
 const query = ref('')
 const isLoading = ref(false)
-let searchTimeout: number | null = null
+let searchTimeout: ReturnType<typeof setTimeout> | null = null
 
 interface Food {
   id: number
@@ -39,12 +47,18 @@ const results = ref<Food[]>([])
 
 // Model selection
 const models = [
-  { label: 'HF: MiniLM-L6-v2 (384d)', value: 'Xenova/all-MiniLM-L6-v2' },
   {
-    label: 'HF: mixbreadai/mxbai-embed-large-v1 (1024d)',
+    label: 'Xenova/all-MiniLM-L6-v2 (huggingface, dim=384, light-weight local LM)',
+    value: 'Xenova/all-MiniLM-L6-v2',
+  },
+  {
+    label: 'mixbreadai/mxbai-embed-large-v1 (huggingface, dim=1024, mid-size local LM)',
     value: 'mixedbread-ai/mxbai-embed-large-v1',
   },
-  { label: 'Gemini: gemini-embedding-001 (3072d)', value: 'gemini-embedding-001' },
+  {
+    label: 'gemini-embedding-001 (Google, dim=3072, Cloud-based Embeddings LM)',
+    value: 'gemini-embedding-001',
+  },
 ]
 const selectedModel = ref<string>(models[0].value)
 
@@ -89,6 +103,46 @@ watch(selectedModel, () => debouncedSearch())
 </script>
 
 <style scoped>
+.control-bar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.control-label {
+  display: inline-flex;
+  align-items: center;
+  height: 40px;
+  color: #334155;
+  font-weight: 600;
+  padding: 0 12px;
+}
+
+/* Shared control styling for equal height */
+.control-bar .control {
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  line-height: 1;
+  box-sizing: border-box;
+}
+
+/* Make the search input stretch while select stays natural width */
+.control-bar input.control {
+  flex: 1 1 280px;
+  width: auto;
+  margin-bottom: 0;
+}
+
+/* Optional min width for the select */
+.control-bar select.control {
+  min-width: 280px;
+}
+
 .food-search-container {
   display: flex;
   flex-direction: column;
@@ -104,12 +158,10 @@ watch(selectedModel, () => debouncedSearch())
 input[type='text'],
 input[type='search'],
 input {
-  width: 60%;
   padding: 0.75rem 1rem;
   border: 1px solid #cbd5e1;
   border-radius: 0.5rem;
   font-size: 1rem;
-  margin-bottom: 1rem;
   outline: none;
   transition: border 0.2s;
 }
