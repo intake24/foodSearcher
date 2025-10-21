@@ -73,8 +73,8 @@ db/                    # Database schema and sample data (via `pg_restore`)
    - Sanitization: lowercase; replace any character outside `[A-Za-z0-9_]` with `_`
 
    Examples:
-   - Xenova/all-MiniLM-L6-v2 → embedded_xenova_all_minilm_l6_v2 (dim 384)
-   - onnx-community/embeddinggemma-300m-ONNX → embedded_onnx_community_embeddinggemma_300m_onnx
+   - Xenova/all-MiniLM-L6-v2 → `embedded_xenova_all_minilm_l6_v2`
+   - onnx-community/embeddinggemma-300m-ONNX → `embedded_onnx_community_embeddinggemma_300m_onnx`
 
    Create the extension and the appropriate column (dimension must match your model):
 
@@ -128,6 +128,71 @@ pnpm app
 ```
 
 App available at http://localhost:5173
+
+## Environment variables (.env)
+
+This project uses simple .env files for both the API and the frontend.
+
+- API: create `api/.env` (loaded automatically via `dotenv/config`)
+- Frontend (Vite): create `app/.env` (Vite only exposes variables prefixed with `VITE_`)
+
+### API .env
+
+Required for database and server:
+
+- `PGHOST` — Postgres host (e.g. `localhost`)
+- `PGPORT` — Postgres port (Docker Compose default maps to `55432` → container `5432`)
+- `PGDATABASE` — Database name (e.g. `postgres`)
+- `PGUSER` — Username (e.g. `postgres`)
+- `PGPASSWORD` — Password (e.g. `postgres`)
+- `API_PORT` — Port for the API server (e.g. `3000`)
+- `CORS_ORIGIN` — Allowed origin for the frontend (e.g. `http://localhost:5173`)
+
+Embedding backends and cache:
+
+- `EMBEDDING_MODEL` — Model id to use for search (defaults to `Xenova/all-MiniLM-L6-v2`)
+- `GEMINI_API_KEY` — Required when using a Gemini model (e.g. `gemini-embedding-001`)
+- `TRANSFORMERS_CACHE` — Absolute path for local HF model cache
+  - If not set, defaults to `<repo>/.cache/transformers`
+  - In local dev environment, prefer an absolute path on macOS or Linux so that both frontend and api can share it, e.g. `/Users/<you>/.cache/transformers`
+
+Example `api/.env` (using Docker Compose Postgres and default HF model):
+
+```env
+PGHOST=localhost
+PGPORT=55432
+PGDATABASE=postgres
+PGUSER=postgres
+PGPASSWORD=postgres
+
+API_PORT=3000
+CORS_ORIGIN=http://localhost:5173
+
+# Embedding backend
+EMBEDDING_MODEL=Xenova/all-MiniLM-L6-v2
+# GEMINI_API_KEY=your-key-here
+
+# Optional: absolute cache dir for models
+TRANSFORMERS_CACHE=/Users/yourname/.cache/transformers
+```
+
+Notes:
+
+- The API uses these Postgres variables via `api/src/utils/db.ts`.
+- The API will derive the embedding column name automatically from `EMBEDDING_MODEL`.
+- When switching to Gemini, set `GEMINI_API_KEY` and `EMBEDDING_MODEL=gemini-embedding-001`.
+
+### Frontend (Vite) .env
+
+Vite only exposes variables prefixed with `VITE_`. Define the API base URL here:
+
+```env
+VITE_API_BASE_URL=http://localhost:3000
+```
+
+Then in your frontend code you can read it via `import.meta.env.VITE_API_BASE_URL`.
+
+Security tip: don’t commit real secrets (like `GEMINI_API_KEY`) to source control. Keep `.env` files local and ensure your VCS ignores them.
 
 ## Usage
 

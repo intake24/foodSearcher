@@ -71,7 +71,8 @@ async function search(searchQuery: string) {
   isLoading.value = true
   try {
     console.log('Searching for:', searchQuery)
-    const res = await axios.post('http://localhost:3000/search', {
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
+    const res = await axios.post(`${baseUrl}/search`, {
       query: searchQuery,
       model: selectedModel.value,
     })
