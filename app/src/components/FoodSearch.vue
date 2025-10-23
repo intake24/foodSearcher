@@ -16,6 +16,14 @@
           </option>
         </select>
       </div>
+      <div>
+        <label class="control-label" for="localeSelect">Locale</label>
+        <select v-model="selectedLocale" id="localeSelect" class="control">
+          <option v-for="l in locales" :key="l.value" :value="l.value">
+            {{ l.label }}
+          </option>
+        </select>
+      </div>
     </div>
     <div></div>
     <div v-if="isLoading" class="loading">Searching...</div>
@@ -62,6 +70,13 @@ const models = [
 ]
 const selectedModel = ref<string>(models[0].value)
 
+// Locale selection
+const locales = [
+  { label: 'UK_V2_2022', value: 'UK_V2_2022' },
+  { label: 'UK_current', value: 'UK_current' },
+]
+const selectedLocale = ref<string>(locales[0].value)
+
 async function search(searchQuery: string) {
   if (!searchQuery.trim()) {
     results.value = []
@@ -75,6 +90,7 @@ async function search(searchQuery: string) {
     const res = await axios.post(`${baseUrl}/search`, {
       query: searchQuery,
       model: selectedModel.value,
+      locale: selectedLocale.value,
     })
     console.log('Search results:', res.data)
     results.value = res.data
@@ -101,6 +117,7 @@ function debouncedSearch() {
 
 watch(query, () => debouncedSearch())
 watch(selectedModel, () => debouncedSearch())
+watch(selectedLocale, () => debouncedSearch())
 </script>
 
 <style scoped>

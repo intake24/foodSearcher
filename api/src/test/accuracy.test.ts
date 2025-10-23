@@ -10,21 +10,21 @@ import path from 'node:path';
 
 const API_BASE_URL = process.env.API_HOST + ':' + process.env.API_PORT;
 const API_TIMEOUT = 30000; // 30 seconds for API to be ready
+const DEFAULT_LOCALE = 'UK_V2_2022';
 
 // Helper function to wait for API to be ready
 async function waitForAPI(maxAttempts = 30, delay = 1000): Promise<boolean> {
   for (let i = 0; i < maxAttempts; i++) {
     try {
-      const response = await fetch(`${API_BASE_URL}/search`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: 'test' }),
-      });
-
-      // If we get any response (including 503), the server is running
-      if (response.status !== 0) {
-        return true;
-      }
+      const response = await (globalThis as any).fetch(
+        `${API_BASE_URL}/search`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: 'test', locale: DEFAULT_LOCALE }),
+        }
+      );
+      if (response.status !== 0) return true;
     } catch (error) {
       // Server not ready yet, wait and retry
       console.log(`Waiting for API... attempt ${i + 1}/${maxAttempts}`);
@@ -36,25 +36,20 @@ async function waitForAPI(maxAttempts = 30, delay = 1000): Promise<boolean> {
 
 // Helper function to make API requests
 async function makeRequest(endpoint: string, options: RequestInit = {}) {
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
+  const res = await (globalThis as any).fetch(`${API_BASE_URL}${endpoint}`, {
+    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
     ...options,
   });
-
   return {
-    status: response.status,
-    headers: response.headers,
+    status: res.status,
+    headers: res.headers,
     json: async () => {
       try {
-        return await response.json();
-      } catch (error) {
+        return await res.json();
+      } catch {
         return null;
       }
     },
-    text: async () => await response.text(),
   };
 }
 
@@ -77,7 +72,7 @@ describe('API Health Checks', () => {
     it('should respond to POST /search endpoint', async () => {
       const response = await makeRequest('/search', {
         method: 'POST',
-        body: JSON.stringify({ query: 'test' }),
+        body: JSON.stringify({ query: 'test', locale: DEFAULT_LOCALE }),
       });
 
       // Should respond with 200 (success) or 503 (extractor loading)
@@ -87,19 +82,22 @@ describe('API Health Checks', () => {
     it('should return JSON content-type', async () => {
       const response = await makeRequest('/search', {
         method: 'POST',
-        body: JSON.stringify({ query: 'test' }),
+        body: JSON.stringify({ query: 'test', locale: DEFAULT_LOCALE }),
       });
 
-      const contentType = response.headers.get('content-type');
+      const contentType = response.headers.get('content-type') || '';
       expect(contentType).toContain('application/json');
     });
 
     it('should handle CORS for allowed origin', async () => {
+      if (!process.env.CORS_ORIGIN) {
+        // Skip CORS check when no expected origin is configured
+        return;
+      }
+
       const response = await makeRequest('/search', {
         method: 'POST',
-        headers: {
-          Origin: process.env.CORS_ORIGIN,
-        },
+        headers: { Origin: process.env.CORS_ORIGIN },
         body: JSON.stringify({ query: 'test' }),
       });
 
@@ -193,7 +191,7 @@ describe('🔍 Accuracy test', () => {
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         const res = await makeRequest('/search', {
           method: 'POST',
-          body: JSON.stringify({ query: searchTerm }),
+          body: JSON.stringify({ query: searchTerm, locale: DEFAULT_LOCALE }),
         });
         const json = await res.json();
 

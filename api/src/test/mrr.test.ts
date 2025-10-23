@@ -6,23 +6,31 @@
 
 import { describe, it, expect, beforeAll } from 'vitest';
 import { readFile } from 'node:fs/promises';
+import 'dotenv/config';
 import path from 'node:path';
 
-const API_BASE_URL = 'http://localhost:3000';
+const API_BASE_URL = process.env.API_HOST + ':' + process.env.API_PORT;
 const API_READY_TIMEOUT = 30_000; // 30 seconds for API to be ready
+const DEFAULT_LOCALE = 'UK_V2_2022';
 
-// Wait until API responds to /search (200 or 503 means it's up)
-async function waitForAPI(maxAttempts = 30, delay = 1_000): Promise<boolean> {
+// Helper function to wait for API to be ready
+async function waitForAPI(maxAttempts = 30, delay = 1000): Promise<boolean> {
   for (let i = 0; i < maxAttempts; i++) {
     try {
-      const res = await fetch(`${API_BASE_URL}/search`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: 'ping' }),
-      });
-      if (res.status !== 0) return true;
-    } catch {}
-    await new Promise((r) => setTimeout(r, delay));
+      const response = await (globalThis as any).fetch(
+        `${API_BASE_URL}/search`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: 'test', locale: DEFAULT_LOCALE }),
+        }
+      );
+      if (response.status !== 0) return true;
+    } catch (error) {
+      // Server not ready yet, wait and retry
+      console.log(`Waiting for API... attempt ${i + 1}/${maxAttempts}`);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
   }
   return false;
 }
@@ -151,7 +159,7 @@ describe('📈 Mean Reciprocal Rank (MRR)', () => {
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         const res = await makeRequest('/search', {
           method: 'POST',
-          body: JSON.stringify({ query: searchTerm }),
+          body: JSON.stringify({ query: searchTerm, locale: DEFAULT_LOCALE }),
         });
         const json = (await res.json()) as any;
 

@@ -2,7 +2,7 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import { pipeline } from '@huggingface/transformers';
 import { GoogleGenAI } from '@google/genai';
-import { getClient } from './utils/db';
+import { getClient, getFoodTableName } from './utils/db';
 import path from 'node:path'; // added
 import 'dotenv/config';
 
@@ -30,6 +30,7 @@ console.log('Default embedding column:', toEmbeddingColumn(DEFAULT_MODEL_ID));
 
 // Shared DB client
 const clientPromise = getClient();
+const FOOD_TABLE = getFoodTableName();
 
 // Caches and backend selector
 const HFExtractors = new Map<string, any>(); // modelId -> extractor
@@ -62,7 +63,7 @@ async function ensureModelReadyFor(
       modelDims.set(modelId, dim);
       console.log(`[Gemini] ${modelId} dimension: ${dim}`);
     }
-    // await ensureEmbeddingColumn(client, 'foods', column, dim);
+    // await ensureEmbeddingColumn(client, FOOD_TABLE, column, dim);
     return { backend: 'gemini', dim, column };
   } else {
     let extractor = HFExtractors.get(modelId);
@@ -82,14 +83,18 @@ async function ensureModelReadyFor(
       modelDims.set(modelId, dim);
       console.log(`[HF] ${modelId} dimension: ${dim}`);
     }
-    // await ensureEmbeddingColumn(client, 'foods', column, dim);
+    // await ensureEmbeddingColumn(client, FOOD_TABLE, column, dim);
     return { backend: 'hf', dim, column };
   }
 }
 
 let counter = 0;
 app.post('/search', async (req: Request, res: Response) => {
-  const { query, model } = req.body as { query: string; model?: string };
+  const { query, model, locale } = req.body as {
+    query?: string;
+    model?: string;
+    locale?: string;
+  };
   if (!query || !query.trim()) return res.status(400).json([]);
   const modelId = (model ?? DEFAULT_MODEL_ID).trim();
   try {
@@ -115,13 +120,15 @@ app.post('/search', async (req: Request, res: Response) => {
       );
     }
     const client = await clientPromise;
+    const effectiveLocale = (locale && String(locale).trim()) || null;
     const result = await client.query(
       `SELECT id, code, name, ${column} <=> $1 AS distance
-       FROM foods
-       WHERE "locale_id" = 'UK_V2_2022' AND ${column} IS NOT NULL
+       FROM ${FOOD_TABLE}
+       WHERE ($2::text IS NULL OR "locale_id" = $2)
+         AND ${column} IS NOT NULL
        ORDER BY ${column} <=> $1
        LIMIT 100`,
-      [`[${embedding.join(',')}]`]
+      [`[${embedding.join(',')}]`, effectiveLocale]
     );
     res.json(result.rows);
     counter++;

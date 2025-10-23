@@ -1,6 +1,10 @@
 #!/usr/bin/env node
 import 'dotenv/config';
-import { ensureEmbeddingColumn, connectNewClient } from './utils/db';
+import {
+  ensureEmbeddingColumn,
+  connectNewClient,
+  getFoodTableName,
+} from './utils/db';
 import { GoogleGenAI } from '@google/genai';
 
 // Config
@@ -36,9 +40,10 @@ async function getEmbeddings(texts: string[]): Promise<number[][]> {
 
 async function main() {
   const client = await connectNewClient();
+  const FOOD_TABLE = getFoodTableName();
 
-  // Load all foods
-  const res = await client.query('SELECT name FROM foods;');
+  // Load foods from all locales
+  const res = await client.query(`SELECT name FROM ${FOOD_TABLE} ;`);
   const foods: string[] = res.rows
     .map((r) => String(r.name ?? '').trim())
     .filter((n) => n.length > 0);
@@ -60,7 +65,7 @@ async function main() {
   }
   console.log(`Detected embedding dimension: ${dim}`);
 
-  await ensureEmbeddingColumn(client, 'foods', EMBEDDING_COLUMN, dim);
+  await ensureEmbeddingColumn(client, FOOD_TABLE, EMBEDDING_COLUMN, dim);
 
   const BATCH_SIZE = 100;
   let counter = 0;
@@ -74,7 +79,9 @@ async function main() {
       const vec = vectors[j];
       if (!vec || vec.length !== dim) continue;
       await client.query(
-        `UPDATE foods SET ${EMBEDDING_COLUMN} = $2 WHERE name = $1;`,
+        `UPDATE ${FOOD_TABLE}
+         SET ${EMBEDDING_COLUMN} = $2
+         WHERE name = $1;`,
         [name, `[${vec.join(',')}]`]
       );
       counter++;

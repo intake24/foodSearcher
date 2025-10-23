@@ -145,6 +145,7 @@ Required for database and server:
 - `PGDATABASE` — Database name (e.g. `postgres`)
 - `PGUSER` — Username (e.g. `postgres`)
 - `PGPASSWORD` — Password (e.g. `postgres`)
+- `PGFOOD_TABLE` — Table containing foods (default: `foods`)
 - `API_PORT` — Port for the API server (e.g. `3000`)
 - `CORS_ORIGIN` — Allowed origin for the frontend (e.g. `http://localhost:5173`)
 
@@ -164,6 +165,8 @@ PGPORT=55432
 PGDATABASE=postgres
 PGUSER=postgres
 PGPASSWORD=postgres
+
+PGFOOD_TABLE=foods
 
 API_PORT=3000
 CORS_ORIGIN=http://localhost:5173

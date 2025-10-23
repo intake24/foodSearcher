@@ -1,6 +1,10 @@
 #!/usr/bin/env node
 import { pipeline } from '@huggingface/transformers';
-import { ensureEmbeddingColumn, connectNewClient } from './utils/db';
+import {
+  ensureEmbeddingColumn,
+  connectNewClient,
+  getFoodTableName,
+} from './utils/db';
 import path from 'node:path';
 import 'dotenv/config';
 
@@ -23,9 +27,10 @@ async function main(): Promise<void> {
   });
 
   const client = await connectNewClient();
+  const FOOD_TABLE = getFoodTableName();
 
-  // Load all foods
-  const res = await client.query('SELECT name FROM foods;');
+  // Load foods from all locales
+  const res = await client.query(`SELECT name FROM ${FOOD_TABLE};`);
   const foods: string[] = res.rows
     .map((r) => String(r.name ?? '').trim())
     .filter((n) => n.length > 0);
@@ -49,7 +54,7 @@ async function main(): Promise<void> {
     throw new Error(`Embedding dimension invalid: ${dim}`);
   }
   console.log(`Detected embedding dimension: ${dim}`);
-  await ensureEmbeddingColumn(client, 'foods', EMBEDDING_COLUMN, dim);
+  await ensureEmbeddingColumn(client, FOOD_TABLE, EMBEDDING_COLUMN, dim);
 
   const BATCH_SIZE = 128;
   let counter = 0;
@@ -72,7 +77,9 @@ async function main(): Promise<void> {
       });
     for (const [i, food] of batch.entries()) {
       await client.query(
-        `UPDATE foods SET ${EMBEDDING_COLUMN} = $2 WHERE name = $1;`,
+        `UPDATE ${FOOD_TABLE}
+         SET ${EMBEDDING_COLUMN} = $2
+         WHERE name = $1;`,
         [food, `[${embeddings[i].join(',')}]`]
       );
       counter++;

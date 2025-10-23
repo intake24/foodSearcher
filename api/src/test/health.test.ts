@@ -8,6 +8,7 @@ import 'dotenv/config';
 
 const API_BASE_URL = process.env.API_HOST + ':' + process.env.API_PORT;
 const API_TIMEOUT = 30000; // 30 seconds for API to be ready
+const DEFAULT_LOCALE = 'UK_V2_2022';
 
 // Helper function to wait for API to be ready
 async function waitForAPI(maxAttempts = 30, delay = 1000): Promise<boolean> {
@@ -16,7 +17,7 @@ async function waitForAPI(maxAttempts = 30, delay = 1000): Promise<boolean> {
       const response = await fetch(`${API_BASE_URL}/search`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: 'test' }),
+        body: JSON.stringify({ query: 'test', locale: DEFAULT_LOCALE }),
       });
 
       // If we get any response (including 503), the server is running
@@ -75,7 +76,7 @@ describe('API Health Checks', () => {
     it('should respond to POST /search endpoint', async () => {
       const response = await makeRequest('/search', {
         method: 'POST',
-        body: JSON.stringify({ query: 'test' }),
+        body: JSON.stringify({ query: 'test', locale: DEFAULT_LOCALE }),
       });
 
       // Should respond with 200 (success) or 503 (extractor loading)
@@ -85,7 +86,7 @@ describe('API Health Checks', () => {
     it('should return JSON content-type', async () => {
       const response = await makeRequest('/search', {
         method: 'POST',
-        body: JSON.stringify({ query: 'test' }),
+        body: JSON.stringify({ query: 'test', locale: DEFAULT_LOCALE }),
       });
 
       const contentType = response.headers.get('content-type');
@@ -96,13 +97,13 @@ describe('API Health Checks', () => {
       const response = await makeRequest('/search', {
         method: 'POST',
         headers: {
-          Origin: 'http://localhost:5173',
+          Origin: 'http://localhost:3322',
         },
-        body: JSON.stringify({ query: 'test' }),
+        body: JSON.stringify({ query: 'test', locale: DEFAULT_LOCALE }),
       });
 
       expect(response.headers.get('access-control-allow-origin')).toBe(
-        'http://localhost:5173'
+        'http://localhost:3322'
       );
     });
   });
@@ -111,7 +112,7 @@ describe('API Health Checks', () => {
     it('should handle valid search query', async () => {
       const response = await makeRequest('/search', {
         method: 'POST',
-        body: JSON.stringify({ query: 'apple' }),
+        body: JSON.stringify({ query: 'apple', locale: DEFAULT_LOCALE }),
       });
 
       const data = await response.json();
@@ -137,7 +138,7 @@ describe('API Health Checks', () => {
     it('should handle empty query', async () => {
       const response = await makeRequest('/search', {
         method: 'POST',
-        body: JSON.stringify({ query: '' }),
+        body: JSON.stringify({ query: '', locale: DEFAULT_LOCALE }),
       });
 
       expect([200, 400, 503]).toContain(response.status);
@@ -146,7 +147,7 @@ describe('API Health Checks', () => {
     it('should handle special characters', async () => {
       const response = await makeRequest('/search', {
         method: 'POST',
-        body: JSON.stringify({ query: 'café & naïve 🍎' }),
+        body: JSON.stringify({ query: 'café & naïve 🍎', locale: DEFAULT_LOCALE }),
       });
 
       expect([200, 503]).toContain(response.status);
@@ -156,7 +157,7 @@ describe('API Health Checks', () => {
       const longQuery = 'apple banana cherry '.repeat(100);
       const response = await makeRequest('/search', {
         method: 'POST',
-        body: JSON.stringify({ query: longQuery }),
+        body: JSON.stringify({ query: longQuery, locale: DEFAULT_LOCALE }),
       });
 
       expect([200, 503]).toContain(response.status);
@@ -197,7 +198,7 @@ describe('API Health Checks', () => {
 
       const response = await makeRequest('/search', {
         method: 'POST',
-        body: JSON.stringify({ query: 'performance test' }),
+        body: JSON.stringify({ query: 'performance test', locale: DEFAULT_LOCALE }),
       });
 
       const duration = Date.now() - startTime;
@@ -210,7 +211,7 @@ describe('API Health Checks', () => {
       const requests = Array.from({ length: 3 }, (_, i) =>
         makeRequest('/search', {
           method: 'POST',
-          body: JSON.stringify({ query: `concurrent test ${i}` }),
+          body: JSON.stringify({ query: `concurrent test ${i}`, locale: DEFAULT_LOCALE }),
         })
       );
 
@@ -226,7 +227,7 @@ describe('API Health Checks', () => {
     it('should return results in correct format when ready', async () => {
       const response = await makeRequest('/search', {
         method: 'POST',
-        body: JSON.stringify({ query: 'banana' }),
+        body: JSON.stringify({ query: 'banana', locale: DEFAULT_LOCALE }),
       });
 
       const data = await response.json();

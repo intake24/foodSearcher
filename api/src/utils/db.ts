@@ -1,34 +1,20 @@
-import { Client } from 'pg';
+import { Client, type ClientConfig } from 'pg';
 import 'dotenv/config';
 
-export type DbConfig = {
-  host: string;
-  port: number;
-  user: string;
-  password: string;
-  database: string;
-};
-
-export function getDbConfigFromEnv(): DbConfig {
-  return {
+export function getDbConfigFromEnv(): ClientConfig {
+  const cfg: ClientConfig = {
     host: process.env.PGHOST,
-    port: Number(process.env.PGPORT),
+    port: process.env.PGPORT ? Number(process.env.PGPORT) : undefined,
     user: process.env.PGUSER,
     password: process.env.PGPASSWORD,
     database: process.env.PGDATABASE,
   };
+  return cfg;
 }
 
-export function createClient(cfg?: Partial<DbConfig>): Client {
-  const base = getDbConfigFromEnv();
-  const merged: DbConfig = { ...base, ...(cfg || {}) } as DbConfig;
-  return new Client({
-    host: merged.host,
-    port: merged.port,
-    user: merged.user,
-    password: merged.password,
-    database: merged.database,
-  });
+export function createClient(cfg?: ClientConfig): Client {
+  const base = cfg ?? getDbConfigFromEnv();
+  return new Client(base);
 }
 
 let sharedClient: Client | null = null;
@@ -41,7 +27,7 @@ export async function getClient(): Promise<Client> {
 }
 
 export async function connectNewClient(
-  cfg?: Partial<DbConfig>
+  cfg?: Record<string, unknown>
 ): Promise<Client> {
   const client = createClient(cfg);
   await client.connect();
@@ -90,4 +76,20 @@ export async function ensureEmbeddingColumn(
     );
   }
   console.log(`Column ${column} already exists with vector(${existing}).`);
+}
+
+/**
+ * Returns the target foods table name from env (PGFOOD_TABLE) or 'foods' by default.
+ * Validates that the identifier is safe: starts with a letter/underscore and
+ * contains only letters, digits, and underscores. Throws on invalid names.
+ */
+export function getFoodTableName(): string {
+  const name = process.env.PGFOOD_TABLE?.trim() || 'foods';
+  const valid = /^[A-Za-z_][A-Za-z0-9_]*$/.test(name);
+  if (!valid) {
+    throw new Error(
+      `Invalid PGFOOD_TABLE identifier "${name}". Use letters, digits, and underscores only, starting with a letter or underscore.`
+    );
+  }
+  return name;
 }
