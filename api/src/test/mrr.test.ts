@@ -9,7 +9,8 @@ import { readFile } from 'node:fs/promises';
 import 'dotenv/config';
 import path from 'node:path';
 
-const API_BASE_URL = process.env.API_HOST + ':' + process.env.API_PORT;
+const API_BASE_URL =
+  'http://' + process.env.API_HOST + ':' + process.env.API_PORT;
 const API_READY_TIMEOUT = 30_000; // 30 seconds for API to be ready
 const DEFAULT_LOCALE = 'UK_V2_2022';
 

@@ -6,7 +6,8 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import 'dotenv/config';
 
-const API_BASE_URL = process.env.API_HOST + ':' + process.env.API_PORT;
+const API_BASE_URL =
+  'http://' + process.env.API_HOST + ':' + process.env.API_PORT;
 const CORS_ORIGIN = process.env.CORS_ORIGIN;
 const API_TIMEOUT = 30000; // 30 seconds for API to be ready
 const DEFAULT_LOCALE = 'UK_V2_2022';
