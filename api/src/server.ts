@@ -9,7 +9,9 @@ import 'dotenv/config';
 const app = express();
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN,
+    origin: process.env.CORS_ORIGIN
+      ? process.env.CORS_ORIGIN.split(',')
+      : false,
   })
 );
 app.use(express.json());

@@ -17,14 +17,11 @@ const DEFAULT_LOCALE = 'UK_V2_2022';
 async function waitForAPI(maxAttempts = 30, delay = 1000): Promise<boolean> {
   for (let i = 0; i < maxAttempts; i++) {
     try {
-      const response = await (globalThis as any).fetch(
-        `${API_BASE_URL}/search`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query: 'test', locale: DEFAULT_LOCALE }),
-        }
-      );
+      const response = await fetch(`${API_BASE_URL}/search`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: 'test', locale: DEFAULT_LOCALE }),
+      });
       if (response.status !== 0) return true;
     } catch (error) {
       // Server not ready yet, wait and retry

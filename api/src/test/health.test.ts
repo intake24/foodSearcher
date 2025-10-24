@@ -7,6 +7,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import 'dotenv/config';
 
 const API_BASE_URL = process.env.API_HOST + ':' + process.env.API_PORT;
+const CORS_ORIGIN = process.env.CORS_ORIGIN;
 const API_TIMEOUT = 30000; // 30 seconds for API to be ready
 const DEFAULT_LOCALE = 'UK_V2_2022';
 
@@ -97,13 +98,13 @@ describe('API Health Checks', () => {
       const response = await makeRequest('/search', {
         method: 'POST',
         headers: {
-          Origin: 'http://localhost:3322',
+          Origin: CORS_ORIGIN,
         },
         body: JSON.stringify({ query: 'test', locale: DEFAULT_LOCALE }),
       });
 
       expect(response.headers.get('access-control-allow-origin')).toBe(
-        'http://localhost:3322'
+        CORS_ORIGIN
       );
     });
   });
@@ -147,7 +148,10 @@ describe('API Health Checks', () => {
     it('should handle special characters', async () => {
       const response = await makeRequest('/search', {
         method: 'POST',
-        body: JSON.stringify({ query: 'café & naïve 🍎', locale: DEFAULT_LOCALE }),
+        body: JSON.stringify({
+          query: 'café & naïve 🍎',
+          locale: DEFAULT_LOCALE,
+        }),
       });
 
       expect([200, 503]).toContain(response.status);
@@ -198,7 +202,10 @@ describe('API Health Checks', () => {
 
       const response = await makeRequest('/search', {
         method: 'POST',
-        body: JSON.stringify({ query: 'performance test', locale: DEFAULT_LOCALE }),
+        body: JSON.stringify({
+          query: 'performance test',
+          locale: DEFAULT_LOCALE,
+        }),
       });
 
       const duration = Date.now() - startTime;
@@ -211,7 +218,10 @@ describe('API Health Checks', () => {
       const requests = Array.from({ length: 3 }, (_, i) =>
         makeRequest('/search', {
           method: 'POST',
-          body: JSON.stringify({ query: `concurrent test ${i}`, locale: DEFAULT_LOCALE }),
+          body: JSON.stringify({
+            query: `concurrent test ${i}`,
+            locale: DEFAULT_LOCALE,
+          }),
         })
       );
 
