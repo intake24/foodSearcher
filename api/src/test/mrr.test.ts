@@ -13,6 +13,7 @@ const API_BASE_URL =
   'http://' + process.env.API_HOST + ':' + process.env.API_PORT;
 const API_READY_TIMEOUT = 30_000; // 30 seconds for API to be ready
 const DEFAULT_LOCALE = 'UK_V2_2022';
+const DEFAULT_MODEL_ID = process.env.EMBEDDING_MODEL;
 
 // Helper function to wait for API to be ready
 async function waitForAPI(maxAttempts = 30, delay = 1000): Promise<boolean> {
@@ -110,6 +111,8 @@ describe('📈 Mean Reciprocal Rank (MRR)', () => {
     if (!ready) {
       throw new Error('API server is not running. Start it with: pnpm api');
     }
+    console.log('✅ API server is running');
+    console.log('Testing with model:', DEFAULT_MODEL_ID);
   }, API_READY_TIMEOUT);
 
   it('computes MRR@1/10/50 over sampled queries', async () => {
@@ -158,6 +161,7 @@ describe('📈 Mean Reciprocal Rank (MRR)', () => {
         const res = await makeRequest('/search', {
           method: 'POST',
           body: JSON.stringify({ query: searchTerm, locale: DEFAULT_LOCALE }),
+          model: DEFAULT_MODEL_ID,
         });
         const json = (await res.json()) as any;
 
@@ -216,5 +220,5 @@ describe('📈 Mean Reciprocal Rank (MRR)', () => {
       expect(v).toBeGreaterThanOrEqual(0);
       expect(v).toBeLessThanOrEqual(1);
     }
-  }, 600_000); // allow up to 10 minutes for large samples
+  }, 900_000); // allow up to 15 minutes for large samples
 });

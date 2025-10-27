@@ -12,6 +12,7 @@ const API_BASE_URL =
   'http://' + process.env.API_HOST + ':' + process.env.API_PORT;
 const API_TIMEOUT = 30000; // 30 seconds for API to be ready
 const DEFAULT_LOCALE = 'UK_V2_2022';
+const DEFAULT_MODEL_ID = process.env.EMBEDDING_MODEL;
 
 // Helper function to wait for API to be ready
 async function waitForAPI(maxAttempts = 30, delay = 1000): Promise<boolean> {
@@ -21,6 +22,7 @@ async function waitForAPI(maxAttempts = 30, delay = 1000): Promise<boolean> {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: 'test', locale: DEFAULT_LOCALE }),
+        model: DEFAULT_MODEL_ID,
       });
       if (response.status !== 0) return true;
     } catch (error) {
@@ -62,7 +64,8 @@ describe('API Health Checks', () => {
       );
       throw new Error('API server is not running. Start it with: pnpm api');
     }
-
+    console.log('✅ API server is running');
+    console.log('Testing with model:', DEFAULT_MODEL_ID);
     console.log('✅ API server is running');
   }, API_TIMEOUT);
 
@@ -235,5 +238,5 @@ describe('🔍 Accuracy test', () => {
       console.warn('Accuracy failures (first 10):', failed);
     }
     expect(successRate).toBeGreaterThanOrEqual(0.85);
-  }, 1200000);
+  }, 900_000); // allow up to 15 minutes for large samples
 });
