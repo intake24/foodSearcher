@@ -172,17 +172,18 @@ app.post('/search-hints', async (req: Request, res: Response) => {
           .join('\n');
 
       // Only use LLM when results are poor/ambiguous to save quota/latency
-      if (!results?.length || bestDistance > 0.4) {
+      if (!results?.length || bestDistance > 0.15) {
         const prompt = `User searched for: "${query}"
 Primary matches are found: 
 ${top10}
 Based on the query, primary matches and corresponding word distances, generate a brief, helpful tooltip (max 80 chars) to help the user refine their food search. 
 
-- If results are poor (such as distance > 0.5), suggest specific food, or altering terms.
+- If results are poor (such as distance > 0.2), suggest specific food, or altering terms.
 - If multiple similar results (such as distance among top 3 < 0.005), suggest adding details.
 - If query is too short or generic, suggest being more descriptive.
 - Be direct, polite and actionable, using simple language with suggestions.
-- If results are good, respond with an empty hint.`;
+- If results are good, respond with an empty hint.
+- If query is not a food name, suggest using food names.`;
 
         console.log('Prompt:', prompt);
         console.log('Generating hint with LLM...');
@@ -209,7 +210,7 @@ Based on the query, primary matches and corresponding word distances, generate a
   const hints: string[] = [];
   const bestDistance = results[0]?.distance ?? 1;
   const confidence =
-    bestDistance < 0.3 ? 'high' : bestDistance < 0.5 ? 'medium' : 'low';
+    bestDistance < 0.1 ? 'high' : bestDistance < 0.2 ? 'medium' : 'low';
 
   return res.json({
     hint: hints.length > 0 ? hints.join('. ') + '.' : '',
