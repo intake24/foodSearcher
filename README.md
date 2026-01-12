@@ -69,10 +69,12 @@ db/                    # Database schema and sample data (via `pg_restore`)
    After importing the `foods` table from `public.foods` in `Intake24`, enable pgvector and create a model-specific vector column.
 
    The embedder and API derive the embedding column name from EMBEDDING_MODEL as:
+
    - embedded\_<sanitized MODEL_ID>
    - Sanitization: lowercase; replace any character outside `[A-Za-z0-9_]` with `_`
 
    Examples:
+
    - Xenova/all-MiniLM-L6-v2 → `embedded_xenova_all_minilm_l6_v2`
    - onnx-community/embeddinggemma-300m-ONNX → `embedded_onnx_community_embeddinggemma_300m_onnx`
 
@@ -362,6 +364,11 @@ Tips:
 
 - Edit frontend in `app`
 - Edit embedding scripts and API server in `api`
+
+## Test results
+
+[[test-results.md]]
+[[internal-feedback-report.md]]
 
 ## License
 
