@@ -13,6 +13,8 @@ A full-stack application for searching foods using semantic embeddings and vecto
 - PostgreSQL with pgvector for vector similarity search
 - Embedding generation using HuggingFace Transformers
 - Docker Compose for easy local development
+- Mean Reciprocal Rank (MRR) evaluation tests using Vitest
+- Use Google GenAI to generate search hints (experimental)
 
 ## Project Structure
 
@@ -364,6 +366,12 @@ Tips:
 
 - Edit frontend in `app`
 - Edit embedding scripts and API server in `api`
+
+## Search Hints with Google GenAI (experimental) 💡
+
+This project includes an optional feature to generate search hints using Google Gemini.
+
+Currently, it uses a the user-provided search term and the top 10 search results (a.k.a. suggestions with least distance to the query) to generate related hints that can help users refine their searches.
 
 ## Test results
 

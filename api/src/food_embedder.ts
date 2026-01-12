@@ -16,7 +16,10 @@ const CACHE_DIR =
 console.log('Using model:', MODEL_ID);
 console.log('Using cache dir:', CACHE_DIR);
 // Derive a safe SQL column name based on model id, e.g., embedded_onnx_community_embeddinggemma_300m_onnx
-const EMBEDDING_COLUMN = `embedded_${MODEL_ID.replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase()}`;
+const EMBEDDING_COLUMN = `embedded_${MODEL_ID.replace(
+  /[^a-zA-Z0-9_]/g,
+  '_'
+).toLowerCase()}`;
 console.log('Using embedding column:', EMBEDDING_COLUMN);
 
 let foods: string[] = [];
@@ -30,7 +33,9 @@ async function main(): Promise<void> {
   const FOOD_TABLE = getFoodTableName();
 
   // Load foods from all locales
-  const res = await client.query(`SELECT name FROM ${FOOD_TABLE};`);
+  const res = await client.query(
+    `SELECT name FROM ${FOOD_TABLE} WHERE ${EMBEDDING_COLUMN} IS NULL`
+  );
   const foods: string[] = res.rows
     .map((r) => String(r.name ?? '').trim())
     .filter((n) => n.length > 0);
