@@ -25,7 +25,7 @@
         </select>
       </div>
     </div>
-    <div></div>
+    <div v-if="hint" class="hint-tooltip" :class="`hint-${hintConfidence}`">💡 {{ hint }}</div>
     <div v-if="isLoading" class="loading">Searching...</div>
     <ul>
       <li v-for="food in results" :key="food.id">
@@ -42,6 +42,8 @@ import axios from 'axios'
 
 const query = ref('')
 const isLoading = ref(false)
+const hint = ref('')
+const hintConfidence = ref<'low' | 'medium' | 'high'>('low')
 let searchTimeout: ReturnType<typeof setTimeout> | null = null
 
 interface Food {
@@ -80,6 +82,7 @@ const selectedLocale = ref<string>(locales[0].value)
 async function search(searchQuery: string) {
   if (!searchQuery.trim()) {
     results.value = []
+    hint.value = ''
     return
   }
 
@@ -94,9 +97,23 @@ async function search(searchQuery: string) {
     })
     console.log('Search results:', res.data)
     results.value = res.data
+
+    // Fetch hints after getting results
+    try {
+      const hintRes = await axios.post(`${baseUrl}/search-hints`, {
+        query: searchQuery,
+        results: results.value.slice(0, 10),
+      })
+      hint.value = hintRes.data.hint || ''
+      hintConfidence.value = hintRes.data.confidence || 'low'
+    } catch (hintError) {
+      console.error('Hint fetch error:', hintError)
+      hint.value = ''
+    }
   } catch (error) {
     console.error('Search error:', error)
     results.value = []
+    hint.value = ''
   } finally {
     isLoading.value = false
   }
@@ -112,7 +129,7 @@ function debouncedSearch() {
   // Set new timeout for debounced search
   searchTimeout = setTimeout(() => {
     search(query.value)
-  }, 300) // 300ms delay
+  }, 1000) // 300ms delay
 }
 
 watch(query, () => debouncedSearch())
@@ -233,5 +250,32 @@ li {
   color: #6b7280;
   font-style: italic;
   margin: 1rem 0;
+}
+
+.hint-tooltip {
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.9rem;
+  border-left: 4px solid;
+  transition: all 0.3s ease;
+}
+
+.hint-low {
+  background: #fef3c7;
+  border-color: #f59e0b;
+  color: #92400e;
+}
+
+.hint-medium {
+  background: #dbeafe;
+  border-color: #3b82f6;
+  color: #1e3a8a;
+}
+
+.hint-high {
+  background: #d1fae5;
+  border-color: #10b981;
+  color: #065f46;
 }
 </style>

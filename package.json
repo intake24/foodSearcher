@@ -4,7 +4,7 @@
     "start": "concurrently -n api,app -c green,blue \"pnpm api\" \"pnpm app\"",
     "db:embed": "pnpm --filter foodsearcher-api embed",
     "db:embed:gemini": "pnpm --filter foodsearcher-api embed:gemini",
-    "api": "pnpm --filter foodsearcher-api api",
+    "api": "pnpm --filter foodsearcher-api dev",
     "app": "pnpm --filter foodsearcher-client dev",
     "clean": "pnpm exec rimraf node_modules **/node_modules **/dist dist"
   },

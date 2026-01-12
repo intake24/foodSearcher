@@ -144,6 +144,79 @@ app.post('/search', async (req: Request, res: Response) => {
   }
 });
 
+app.post('/search-hints', async (req: Request, res: Response) => {
+  const { query, results } = req.body as {
+    query?: string;
+    results?: Array<{ name: string; distance: number }>;
+  };
+
+  if (!query || !query.trim()) {
+    return res.json({ hint: '', confidence: 'low' });
+  }
+
+  // Enhanced: Use LLM for smart hints if available
+  if (GEMINI_API_KEY) {
+    try {
+      if (!genAI) genAI = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+
+      const bestMatch = results?.[0];
+      const bestDistance = bestMatch?.distance ?? 1;
+      console.log('Best match:', bestMatch);
+      console.log('Best distance:', bestDistance);
+
+      const top10List = results ?? [];
+      const top10 =
+        `results[${top10List.length}]{name,distance}:\n` +
+        top10List
+          .map((r) => `  ${r.name}, ${r.distance.toFixed(3)}`)
+          .join('\n');
+
+      // Only use LLM when results are poor/ambiguous to save quota/latency
+      if (!results?.length || bestDistance > 0.4) {
+        const prompt = `User searched for: "${query}"
+Primary matches are found: 
+${top10}
+Based on the query, primary matches and corresponding word distances, generate a brief, helpful tooltip (max 80 chars) to help the user refine their food search. 
+
+- If results are poor (such as distance > 0.5), suggest specific food, or altering terms.
+- If multiple similar results (such as distance among top 3 < 0.005), suggest adding details.
+- If query is too short or generic, suggest being more descriptive.
+- Be direct, polite and actionable, using simple language with suggestions.
+- If results are good, respond with an empty hint.`;
+
+        console.log('Prompt:', prompt);
+        console.log('Generating hint with LLM...');
+        const resp: any = await genAI.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        } as any);
+
+        const text = resp?.candidates?.[0]?.content?.parts?.[0]?.text;
+        console.log('LLM hint response:', text);
+        if (text) {
+          return res.json({
+            hint: text.trim(),
+            confidence: 'medium',
+          });
+        }
+      }
+    } catch (e) {
+      console.error('LLM hint generation failed:', e);
+      // Fallback to rules below
+    }
+  }
+
+  const hints: string[] = [];
+  const bestDistance = results[0]?.distance ?? 1;
+  const confidence =
+    bestDistance < 0.3 ? 'high' : bestDistance < 0.5 ? 'medium' : 'low';
+
+  return res.json({
+    hint: hints.length > 0 ? hints.join('. ') + '.' : '',
+    confidence,
+  });
+});
+
 app.listen(process.env.API_PORT, () =>
   console.log(
     `Server running on ${process.env.API_HOST}:${process.env.API_PORT}`

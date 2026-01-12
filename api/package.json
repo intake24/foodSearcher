@@ -4,6 +4,7 @@
 	"scripts": {
 		"embed": "tsx src/food_embedder.ts",
 		"embed:gemini": "tsx src/google_food_embedder.ts",
+		"dev": "tsx watch src/server.ts",
 		"api": "tsx src/server.ts",
 		"test": "vitest",
 		"test:run": "vitest run",
