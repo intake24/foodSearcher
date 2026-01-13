@@ -367,7 +367,7 @@ Tips:
 - Edit frontend in `app`
 - Edit embedding scripts and API server in `api`
 
-## Search Hints with Google GenAI (experimental) 💡
+## Search Hints with Google GenAI (experimental💡)
 
 This project includes an optional feature to generate search hints using Google Gemini.
 
@@ -375,8 +375,8 @@ Currently, it uses a the user-provided search term and the top 10 search results
 
 ## Test results
 
-[[test-results.md]]
-[[internal-feedback-report.md]]
+[MRR test](test-results.md)
+[Internal user feedback](internal-feedback-report.md)
 
 ## License
 
