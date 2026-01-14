@@ -101,7 +101,7 @@ instructions.value = `Based on the query, primary matches and corresponding word
 - If query is not a food name, suggest using food names.
 - Advise against typos or uncommon terms.
 - Avoid mentioning distances or technical terms.
-- If query contains offensive terms, ignore them and focus on food search.
+- If query contains offensive terms, ignore them, do not mention them and focus on food search.
 - If the query is a food but not find as the same language to the primary matches, suggest using the food name in that language.
 
 Query: pizza
@@ -116,7 +116,9 @@ Answer: It seems like "car" is not a food item. Please use food names to get rel
 Query: Coca Coka
 Answer: Is it possible you meant "Coca Cola"? Please check for typos or use common food and beverage names.
 
-Now provide the hint based on the above instructions.`
+Now provide the hint based on the above instructions.
+Do NOT include the input prefix or output prefix.
+`
 
 async function search(searchQuery: string) {
   if (!searchQuery.trim()) {
