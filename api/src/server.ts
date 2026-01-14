@@ -123,7 +123,7 @@ app.post('/search', async (req: Request, res: Response) => {
     }
     const client = await clientPromise;
     const effectiveLocale = (locale && String(locale).trim()) || null;
-    const result = await client.query(
+    let result = await client.query(
       `SELECT id, code, name, ${column} <=> $1 AS distance
        FROM ${FOOD_TABLE}
        WHERE ($2::text IS NULL OR "locale_id" = $2)
@@ -132,6 +132,9 @@ app.post('/search', async (req: Request, res: Response) => {
        LIMIT 100`,
       [`[${embedding.join(',')}]`, effectiveLocale]
     );
+    if (!result) {
+      result = { rows: [] } as any;
+    }
     res.json(result.rows);
     counter++;
     if (counter % 10 === 0) console.log(`Handled ${counter} requests so far.`);
@@ -145,9 +148,10 @@ app.post('/search', async (req: Request, res: Response) => {
 });
 
 app.post('/search-hints', async (req: Request, res: Response) => {
-  const { query, results } = req.body as {
+  const { query, results, instructions } = req.body as {
     query?: string;
     results?: Array<{ name: string; distance: number }>;
+    instructions?: string;
   };
 
   if (!query || !query.trim()) {
@@ -173,33 +177,14 @@ app.post('/search-hints', async (req: Request, res: Response) => {
 
       // Only use LLM when results are poor/ambiguous to save quota/latency
       if (!results?.length || bestDistance > 0.15) {
+        const userInstructions = instructions
+          ? `User instructions: ${instructions}\n`
+          : '';
+
         const prompt = `User searched for: "${query}"
 Primary matches are found: 
 ${top10}
-Based on the query, primary matches and corresponding word distances, generate a brief, helpful tooltip hints (30 words max) to help the user refine their food search. 
-
-- If results are poor (such as distance > 0.2), suggest specific food, or altering terms.
-- If multiple similar results (such as distance among top 3 < 0.005), suggest adding details.
-- If query is too short or generic, suggest being more descriptive.
-- Be direct, polite and actionable, using simple language with suggestions.
-- If results are good, respond with an empty hint.
-- If query is not a food name, suggest using food names.
-- Advise against typos or uncommon terms.
-- Avoid mentioning distances or technical terms.
-
-Query: pizza
-Answer: You might want to specify the type of pizza or add toppings to narrow down your search.
-
-Query: apple
-Answer: Try adding more details like the variety of apple or whether you're looking for fresh or cooked options.
-
-Query: car
-Answer: It seems like "car" is not a food item. Please use food names to get relevant search results.
-
-Query: Coca Coka
-Answer: Is it possible you meant "Coca Cola"? Please check for typos or use common food and beverage names.
-
-Now provide the hint based on the above instructions.
+${userInstructions}
 `;
 
         console.log('Prompt:', prompt);
@@ -241,7 +226,7 @@ Now provide the hint based on the above instructions.
   }
 
   const hints: string[] = [];
-  const bestDistance = results[0]?.distance ?? 1;
+  const bestDistance = results?.[0]?.distance ?? 1;
   const confidence =
     bestDistance < 0.1 ? 'high' : bestDistance < 0.2 ? 'medium' : 'low';
 

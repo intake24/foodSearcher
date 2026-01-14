@@ -1,7 +1,9 @@
 <template>
   <div>
     <div class="control-bar">
+      <label class="control-label" for="foodQuery">Query</label>
       <input
+        id="foodQuery"
         v-model="query"
         placeholder="Type a food..."
         class="control"
@@ -24,6 +26,16 @@
           </option>
         </select>
       </div>
+      <div class="instructions-container">
+        <label class="control-label" for="instructionsInput">Instructions</label>
+        <textarea
+          v-model="instructions"
+          id="instructionsInput"
+          placeholder="Hint instructions..."
+          class="control"
+          rows="3"
+        ></textarea>
+      </div>
     </div>
     <div v-if="hint" class="hint-tooltip" :class="`hint-${hintConfidence}`">💡 {{ hint }}</div>
     <div v-if="isLoading" class="loading">Searching...</div>
@@ -41,6 +53,7 @@ import { ref, watch } from 'vue'
 import axios from 'axios'
 
 const query = ref('')
+const instructions = ref('')
 const isLoading = ref(false)
 const hint = ref('')
 const hintConfidence = ref<'low' | 'medium' | 'high'>('low')
@@ -58,26 +71,52 @@ const results = ref<Food[]>([])
 // Model selection
 const models = [
   {
-    label: 'Xenova/all-MiniLM-L6-v2 (huggingface, dim=384, light-weight local LM)',
+    label: 'Xenova/all-MiniLM-L6-v2',
     value: 'Xenova/all-MiniLM-L6-v2',
   },
   {
-    label: 'mixbreadai/mxbai-embed-large-v1 (huggingface, dim=1024, mid-size local LM)',
+    label: 'mixedbread-ai/mxbai-embed-large-v1',
     value: 'mixedbread-ai/mxbai-embed-large-v1',
   },
   {
-    label: 'gemini-embedding-001 (Google, dim=3072, Cloud-based Embeddings LM)',
+    label: 'gemini-embedding-001',
     value: 'gemini-embedding-001',
   },
 ]
-const selectedModel = ref<string>(models[0].value)
+const selectedModel = ref<string>(models[1].value)
 
 // Locale selection
 const locales = [
   { label: 'UK_V2_2022', value: 'UK_V2_2022' },
   { label: 'UK_current', value: 'UK_current' },
 ]
-const selectedLocale = ref<string>(locales[0].value)
+const selectedLocale = ref<string>(locales[1].value)
+
+instructions.value = `Based on the query, primary matches and corresponding word distances, generate a brief, helpful tooltip hints (30 words max) to help the user refine their food search. 
+- If results are poor (such as distance > 0.2), suggest specific food, or altering terms.
+- If multiple similar results (such as distance among top 3 < 0.005), suggest adding details.
+- If query is too short or generic, suggest being more descriptive.
+- Be direct, polite and actionable, using simple language with suggestions.
+- If results are good, respond with an empty hint.
+- If query is not a food name, suggest using food names.
+- Advise against typos or uncommon terms.
+- Avoid mentioning distances or technical terms.
+- If query contains offensive terms, ignore them and focus on food search.
+- If the query is a food but not find as the same language to the primary matches, suggest using the food name in that language.
+
+Query: pizza
+Answer: You might want to specify the type of pizza or add toppings to narrow down your search.
+
+Query: apple
+Answer: Try adding more details like the variety of apple or whether you're looking for fresh or cooked options.
+
+Query: car
+Answer: It seems like "car" is not a food item. Please use food names to get relevant search results.
+
+Query: Coca Coka
+Answer: Is it possible you meant "Coca Cola"? Please check for typos or use common food and beverage names.
+
+Now provide the hint based on the above instructions.`
 
 async function search(searchQuery: string) {
   if (!searchQuery.trim()) {
@@ -103,6 +142,7 @@ async function search(searchQuery: string) {
       const hintRes = await axios.post(`${baseUrl}/search-hints`, {
         query: searchQuery,
         results: results.value.slice(0, 10),
+        instructions: instructions.value,
       })
       hint.value = hintRes.data.hint || ''
       hintConfidence.value = hintRes.data.confidence || 'low'
@@ -135,6 +175,7 @@ function debouncedSearch() {
 watch(query, () => debouncedSearch())
 watch(selectedModel, () => debouncedSearch())
 watch(selectedLocale, () => debouncedSearch())
+// watch(instructions, () => debouncedSearch())
 </script>
 
 <style scoped>
@@ -277,5 +318,25 @@ li {
   background: #d1fae5;
   border-color: #10b981;
   color: #065f46;
+}
+
+.instructions-container {
+  display: flex;
+  flex: 1 1 100%;
+  padding-top: 8px;
+}
+
+.instructions-container .control-label {
+  align-self: flex-start;
+  padding-top: 10px;
+}
+
+.control-bar textarea.control {
+  height: auto;
+  min-height: 40px;
+  padding: 8px 12px;
+  resize: vertical;
+  flex: 1;
+  font-family: inherit;
 }
 </style>
